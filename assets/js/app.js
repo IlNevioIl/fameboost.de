@@ -157,70 +157,6 @@ const categoryLinks = {
   ]
 };
 
-const seoKeywordGroups = [
-  {
-    title: "Instagram Keywords",
-    url: "/instagram-follower-kaufen/",
-    terms: [
-      "Instagram Follower kaufen", "Instagram Follower kaufen deutsch", "Instagram Follower Deutschland kaufen", "deutsche Instagram Follower kaufen", "Instagram Follower kaufen ohne Passwort", "Instagram Follower sicher kaufen", "Instagram Follower schnell kaufen", "Instagram Follower günstig kaufen", "Instagram Follower Paket", "Instagram Follower Shop", "Instagram Follower bestellen", "Instagram Wachstum kaufen", "Instagram Reichweite kaufen", "Instagram Profil pushen", "Instagram Social Proof", "mehr Instagram Follower bekommen", "Instagram Likes kaufen", "Instagram Likes kaufen deutsch", "Instagram Likes ohne Passwort", "Instagram Likes schnell kaufen", "Instagram Likes günstig kaufen", "Instagram Likes bestellen", "Instagram Beitragslikes kaufen", "Instagram Post Likes kaufen", "Instagram Reels Likes kaufen", "Instagram Views kaufen", "Instagram Reels Views kaufen", "Instagram Story Views kaufen", "Instagram Video Views kaufen", "Instagram Kommentare kaufen", "Instagram Saves kaufen", "Instagram Impressionen kaufen", "Instagram Engagement kaufen", "buy Instagram followers", "buy Instagram followers Germany", "buy German Instagram followers", "buy Instagram followers no password", "buy Instagram followers fast", "buy Instagram followers cheap", "buy Instagram likes", "buy Instagram likes Germany", "buy Instagram likes no password", "buy Instagram views", "buy Instagram reel views", "buy Instagram story views", "Instagram growth service", "Instagram social proof package"
-    ]
-  },
-  {
-    title: "TikTok Keywords",
-    url: "/tiktok-follower-kaufen/",
-    terms: [
-      "TikTok Follower kaufen", "TikTok Follower kaufen deutsch", "TikTok Follower Deutschland kaufen", "deutsche TikTok Follower kaufen", "TikTok Follower ohne Passwort", "TikTok Follower schnell kaufen", "TikTok Follower günstig kaufen", "TikTok Follower bestellen", "TikTok Follower Paket", "TikTok Wachstum kaufen", "TikTok Reichweite kaufen", "TikTok Profil pushen", "TikTok Social Proof", "TikTok Likes kaufen", "TikTok Likes kaufen deutsch", "TikTok Likes schnell kaufen", "TikTok Likes ohne Passwort", "TikTok Video Likes kaufen", "TikTok Views kaufen", "TikTok Views kaufen deutsch", "TikTok Views schnell kaufen", "TikTok Video Views kaufen", "TikTok Aufrufe kaufen", "TikTok Kommentare kaufen", "TikTok Shares kaufen", "TikTok Saves kaufen", "TikTok Live Zuschauer kaufen", "TikTok Engagement kaufen", "TikTok Algorithmus push", "mehr TikTok Follower", "buy TikTok followers", "buy TikTok followers Germany", "buy German TikTok followers", "buy TikTok followers no password", "buy TikTok followers fast", "buy TikTok followers cheap", "buy TikTok likes", "buy TikTok views", "buy TikTok video views", "buy TikTok shares", "buy TikTok comments", "TikTok growth service", "TikTok engagement package"
-    ]
-  },
-  {
-    title: "YouTube Keywords",
-    url: "/youtube-abonnenten-kaufen/",
-    terms: [
-      "YouTube Abonnenten kaufen", "YouTube Abos kaufen", "YouTube Abonnenten kaufen deutsch", "deutsche YouTube Abonnenten kaufen", "YouTube Abonnenten ohne Passwort", "YouTube Abonnenten schnell kaufen", "YouTube Abonnenten günstig kaufen", "YouTube Abonnenten bestellen", "YouTube Kanal pushen", "YouTube Kanal Wachstum", "YouTube Social Proof", "YouTube Views kaufen", "YouTube Views kaufen deutsch", "YouTube Aufrufe kaufen", "YouTube Video Views kaufen", "YouTube Shorts Views kaufen", "YouTube Views schnell kaufen", "YouTube Views günstig kaufen", "YouTube Likes kaufen", "YouTube Kommentare kaufen", "YouTube Watchtime kaufen", "YouTube Wiedergabezeit kaufen", "YouTube Reichweite kaufen", "YouTube Monetarisierung Start", "mehr YouTube Abonnenten", "buy YouTube subscribers", "buy YouTube subscribers Germany", "buy German YouTube subscribers", "buy YouTube subscribers no password", "buy YouTube subscribers fast", "buy YouTube views", "buy YouTube views Germany", "buy YouTube video views", "buy YouTube Shorts views", "buy YouTube likes", "buy YouTube comments", "buy YouTube watch time", "YouTube growth service", "YouTube channel growth"
-    ]
-  },
-  {
-    title: "Twitch Keywords",
-    url: "/twitch-follower-kaufen/",
-    terms: [
-      "Twitch Follower kaufen", "Twitch Follower kaufen deutsch", "deutsche Twitch Follower kaufen", "Twitch Follower ohne Passwort", "Twitch Follower schnell kaufen", "Twitch Follower günstig kaufen", "Twitch Follower bestellen", "Twitch Kanal pushen", "Twitch Stream pushen", "Twitch Wachstum kaufen", "Twitch Social Proof", "Twitch Zuschauer kaufen", "Twitch Live Zuschauer kaufen", "Twitch Viewer kaufen", "Twitch Views kaufen", "Twitch Video Views kaufen", "Twitch Clips Views kaufen", "Twitch Engagement kaufen", "mehr Twitch Follower", "buy Twitch followers", "buy Twitch followers Germany", "buy Twitch followers no password", "buy Twitch followers fast", "buy Twitch viewers", "buy Twitch live viewers", "buy Twitch views", "Twitch growth service", "Twitch streamer growth", "Twitch social proof"
-    ]
-  },
-  {
-    title: "Facebook Keywords",
-    url: "/facebook-likes-kaufen/",
-    terms: [
-      "Facebook Likes kaufen", "Facebook Likes kaufen deutsch", "Facebook Seitenlikes kaufen", "Facebook Page Likes kaufen", "Facebook Follower kaufen", "Facebook Beitragslikes kaufen", "Facebook Post Likes kaufen", "Facebook Kommentare kaufen", "Facebook Reichweite kaufen", "Facebook Seite pushen", "Facebook Business Seite Likes", "Facebook Social Proof", "Facebook Engagement kaufen", "Facebook Likes ohne Passwort", "Facebook Likes schnell kaufen", "Facebook Likes günstig kaufen", "buy Facebook likes", "buy Facebook page likes", "buy Facebook followers", "buy Facebook post likes", "buy Facebook comments", "buy Facebook engagement", "Facebook growth service", "Facebook social proof"
-    ]
-  },
-  {
-    title: "Allgemeine Suchanfragen",
-    url: "/#produkte",
-    terms: [
-      "Follower kaufen", "Follower kaufen deutsch", "Follower kaufen Deutschland", "Follower kaufen ohne Passwort", "Follower kaufen sicher", "Follower kaufen günstig", "Follower kaufen schnell", "Follower bestellen", "Follower Shop", "Social Media Follower kaufen", "Social Media Wachstum kaufen", "Social Media Pakete kaufen", "Social Media Boost kaufen", "Social Media Reichweite kaufen", "Social Proof kaufen", "Likes kaufen", "Likes kaufen deutsch", "Likes kaufen ohne Passwort", "Views kaufen", "Views kaufen deutsch", "Aufrufe kaufen", "Kommentare kaufen", "Engagement kaufen", "Profil pushen", "Creator Wachstum", "Influencer Wachstum", "mehr Sichtbarkeit Social Media", "SMM Shop Deutschland", "Social Growth Shop", "Follower Paket kaufen", "Refill Follower kaufen", "Follower mit Refill", "buy followers", "buy followers Germany", "buy followers no password", "buy followers fast", "buy followers cheap", "buy social media followers", "buy social media likes", "buy social media views", "buy engagement", "buy social proof", "social media growth service", "social media boost", "creator growth service", "influencer growth package", "SMM services Germany"
-    ]
-  }
-];
-
-function keywordTarget(term) {
-  const lower = term.toLowerCase();
-  if (lower.includes("instagram likes") || lower.includes("instagram beitrag") || lower.includes("instagram post") || lower.includes("reels likes")) return "/instagram-likes-kaufen/";
-  if (lower.includes("instagram views") || lower.includes("reels views") || lower.includes("story views") || lower.includes("video views")) return "/instagram-views-kaufen/";
-  if (lower.includes("instagram")) return "/instagram-follower-kaufen/";
-  if (lower.includes("tiktok likes")) return "/tiktok-likes-kaufen/";
-  if (lower.includes("tiktok views") || lower.includes("tiktok aufrufe") || lower.includes("video views")) return "/tiktok-views-kaufen/";
-  if (lower.includes("tiktok")) return "/tiktok-follower-kaufen/";
-  if (lower.includes("youtube views") || lower.includes("youtube aufrufe") || lower.includes("shorts")) return "/youtube-views-kaufen/";
-  if (lower.includes("youtube")) return "/youtube-abonnenten-kaufen/";
-  if (lower.includes("twitch")) return "/twitch-follower-kaufen/";
-  if (lower.includes("facebook")) return "/facebook-likes-kaufen/";
-  return "/#produkte";
-}
-
-function keywordChips(terms, limit = 200) {
-  return terms.slice(0, limit).map((term) => `<a class="seo-chip" href="${keywordTarget(term)}">${term}</a>`).join("");
-}
-
 function platformInfo(platform) {
   return platformMeta[platform] || { slug: "social", accent: "#22a7ff", accent2: "#22d6b5", accent3: "#101a32" };
 }
@@ -412,7 +348,7 @@ function footer() {
         </div>
         <div><h3 class="footer-platform-heading">${platformLogo("Instagram", true)}</h3><ul><li><a href="/instagram-follower-kaufen/">Instagram Follower kaufen</a></li><li><a href="/instagram-likes-kaufen/">Instagram Likes kaufen</a></li><li><a href="/instagram-views-kaufen/">Instagram Views kaufen</a></li><li><a href="/instagram/">Instagram Kommentare kaufen</a></li></ul></div>
         <div><h3 class="footer-platform-heading">${platformLogo("TikTok")} ${platformLogo("YouTube")}<span>TikTok & YouTube</span></h3><ul><li><a href="/tiktok-follower-kaufen/">TikTok Follower kaufen</a></li><li><a href="/tiktok-likes-kaufen/">TikTok Likes kaufen</a></li><li><a href="/tiktok-views-kaufen/">TikTok Views kaufen</a></li><li><a href="/youtube-abonnenten-kaufen/">YouTube Abonnenten kaufen</a></li><li><a href="/youtube-views-kaufen/">YouTube Views kaufen</a></li></ul></div>
-        <div><h3>Service</h3><ul><li><a href="/faq/">FAQ</a></li><li><a href="/kontakt/">Kontakt</a></li><li><a href="/suchbegriffe/">Suchbegriffe</a></li><li><a href="/zahlungsarten/">Zahlungsarten</a></li><li><a href="/lieferbedingungen/">Lieferbedingungen</a></li><li><a href="/refill-anfrage/">Refill-Anfrage</a></li></ul></div>
+        <div><h3>Service</h3><ul><li><a href="/faq/">FAQ</a></li><li><a href="/kontakt/">Kontakt</a></li><li><a href="/zahlungsarten/">Zahlungsarten</a></li><li><a href="/lieferbedingungen/">Lieferbedingungen</a></li><li><a href="/refill-anfrage/">Refill-Anfrage</a></li></ul></div>
         <div><h3>Rechtliches</h3><ul><li><a href="/impressum/">Impressum</a></li><li><a href="/datenschutz/">Datenschutz</a></li><li><a href="/agb/">AGB</a></li><li><a href="/widerrufsbelehrung/">Widerrufsbelehrung</a></li></ul></div>
       </div>
       <div class="footer-bottom">
@@ -455,21 +391,7 @@ function home() {
       ${infoCard("Mehr Sichtbarkeit für dein Profil", "Ein professioneller erster Eindruck kann entscheiden, ob neue Besucher deinem Profil vertrauen, deine Inhalte anschauen oder weiterklicken. Mit FameBoost.de kannst du gezielt Pakete auswählen, die zu deinem Profil und deiner Plattform passen.")}
       ${infoCard("Einfacher Ablauf", "Du brauchst keine technischen Kenntnisse. Wähle die Plattform, entscheide dich für eine Menge und gib deinen Profilnamen oder Link ein. Danach kannst du deine Bestellung sicher bezahlen.")}
       ${infoCard("Für Creator, Unternehmen und Marken", "Ob neues Projekt, lokales Unternehmen, Musiker, Creator oder Shop: Social-Media-Profile wirken stärker, wenn sie aktiv und professionell aufgebaut sind.")}
-    </div></section>
-    ${seoKeywordHub()}`;
-}
-
-function seoKeywordHub() {
-  return `<section class="section seo-keyword-section"><div class="container">
-    <div class="section-head reveal"><h2>Suchbegriffe für Social-Media-Pakete</h2><p>Deutsch- und englischsprachige Suchanfragen, über die Nutzer passende Social-Media-Wachstumspakete finden. Die Tags führen direkt zu den relevanten Plattform- und Produktseiten.</p></div>
-    <div class="seo-keyword-grid">
-      ${seoKeywordGroups.map((group) => `<article class="seo-keyword-card reveal"><h3>${group.title}</h3><div class="seo-chip-cloud">${keywordChips(group.terms)}</div><a class="seo-card-link" href="${group.url}">Passende Pakete ansehen</a></article>`).join("")}
-    </div>
-  </div></section>`;
-}
-
-function keywordPage() {
-  return `<section class="product-hero"><div class="container"><h1>Social-Media-Suchbegriffe</h1><p class="lead">Deutsch- und englischsprachige Keyword-Cluster für Instagram, TikTok, YouTube, Twitch, Facebook und allgemeine Social-Growth-Pakete.</p></div></section>${seoKeywordHub()}`;
+    </div></section>`;
 }
 
 function heroVisual() {
@@ -583,19 +505,10 @@ function renderProduct(slug) {
         ${contentBlock("Für wen eignet sich das Paket?", `<ul><li>Creator, die ihr Profil professioneller wirken lassen möchten</li><li>Unternehmen, die neue Social-Media-Auftritte sichtbarer machen wollen</li><li>Musiker, Coaches, lokale Dienstleister, Shops und Influencer</li><li>Profile, die ihre Social-Proof-Wirkung verbessern möchten</li></ul>`)}
         ${contentBlock("Wichtig vor der Bestellung", `<ul><li>Das Profil muss öffentlich sein</li><li>Der Profilname muss korrekt eingetragen werden</li><li>Während der Bearbeitung sollte der Nutzername nicht geändert werden</li><li>Es wird kein Passwort benötigt</li><li>Lieferzeiten können je nach Paket und Auslastung variieren</li></ul>`)}
         ${faqBlock(`FAQ zu ${product.type}`, productFaq)}
-        ${productKeywordBlock(product)}
         ${contentBlock(`${product.keyword}: Ratgeber und Hinweise`, seoText(product))}
       </div>
       <aside>${relatedProducts(slug)}</aside>
     </div></section>`;
-}
-
-function productKeywordBlock(product) {
-  const group = seoKeywordGroups.find((item) => item.title.startsWith(product.platform)) || seoKeywordGroups.at(-1);
-  const platformTerms = group.terms.filter((term) => term.toLowerCase().includes(product.platform.toLowerCase())).slice(0, 36);
-  const productTerms = platformTerms.filter((term) => term.toLowerCase().includes(product.type.toLowerCase().slice(0, 5)));
-  const terms = [...new Set([product.keyword, product.title, ...productTerms, ...platformTerms])].slice(0, 42);
-  return `<section class="content-block seo-product-keywords reveal"><h2>Ähnliche Suchbegriffe</h2><p>Diese Begriffe helfen bei der Orientierung, wenn du nach passenden ${product.platform}-Paketen suchst.</p><div class="seo-chip-cloud">${keywordChips(terms, 42)}</div></section>`;
 }
 
 function quickProductInfo(number, title, text) {
@@ -920,7 +833,6 @@ function route() {
   else if (page === "faq") app.innerHTML = faqPage();
   else if (page === "contact") app.innerHTML = contactPage();
   else if (page === "refill") app.innerHTML = contactPage("refill");
-  else if (page === "keywords") app.innerHTML = keywordPage();
   else if (page === "category") app.innerHTML = categoryPage(platform);
   else if (page === "admin") app.innerHTML = adminPage();
   else if (page === "legal") app.innerHTML = legalPage(legal || "Rechtliche Hinweise");
