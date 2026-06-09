@@ -1,0 +1,31 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 80" role="img" aria-labelledby="title desc">
+  <title id="title">FameBoost.de Logo</title>
+  <desc id="desc">Modernes FameBoost.de Logo mit Boost-Pfeil und Social-Growth-Symbol.</desc>
+  <defs>
+    <linearGradient id="markGradient" x1="8" y1="70" x2="72" y2="8" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#22d6b5"/>
+      <stop offset="0.46" stop-color="#22a7ff"/>
+      <stop offset="1" stop-color="#8057ff"/>
+    </linearGradient>
+    <linearGradient id="textGradient" x1="90" y1="58" x2="282" y2="22" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#ffffff"/>
+      <stop offset="0.55" stop-color="#d9f6ff"/>
+      <stop offset="1" stop-color="#8df4dc"/>
+    </linearGradient>
+    <filter id="glow" x="-30%" y="-30%" width="160%" height="160%">
+      <feGaussianBlur stdDeviation="4" result="blur"/>
+      <feColorMatrix in="blur" type="matrix" values="0 0 0 0 0.13 0 0 0 0 0.65 0 0 0 0 1 0 0 0 .5 0"/>
+      <feMerge>
+        <feMergeNode/>
+        <feMergeNode in="SourceGraphic"/>
+      </feMerge>
+    </filter>
+  </defs>
+  <rect x="8" y="8" width="64" height="64" rx="18" fill="#07111f"/>
+  <rect x="10" y="10" width="60" height="60" rx="16" fill="url(#markGradient)" filter="url(#glow)"/>
+  <path d="M28 56V25h24v8H38v7h12v8H38v8H28Z" fill="#06111f"/>
+  <path d="M45 53 58 40h-8V30h18v18H58v-8L45 53Z" fill="#ffffff"/>
+  <circle cx="24" cy="23" r="4" fill="#ffffff" opacity=".9"/>
+  <text x="88" y="48" font-family="Inter, Segoe UI, Arial, sans-serif" font-size="31" font-weight="900" letter-spacing="-.5" fill="url(#textGradient)">FameBoost</text>
+  <text x="266" y="48" font-family="Inter, Segoe UI, Arial, sans-serif" font-size="24" font-weight="850" fill="#8df4dc">.de</text>
+</svg>

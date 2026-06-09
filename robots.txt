@@ -1,0 +1,7 @@
+User-agent: *
+Allow: /
+Disallow: /admin/
+Disallow: /kasse/
+Disallow: /warenkorb/
+
+Sitemap: https://fameboost.de/sitemap.xml

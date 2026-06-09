@@ -1,0 +1,21 @@
+﻿Betreff: Deine Bestellung bei FameBoost.de ist eingegangen
+
+Hallo [Vorname],
+
+vielen Dank für deine Bestellung bei FameBoost.de.
+
+Wir haben deine Bestellung erhalten und beginnen mit der Bearbeitung, sobald die Zahlung bestätigt wurde.
+
+Bestelldetails:
+Bestellnummer: [Bestellnummer]
+Produkt: [Produkt]
+Profil/Link: [Profil]
+Menge: [Menge]
+Liefergeschwindigkeit: [Liefergeschwindigkeit]
+
+Wichtig: Bitte ändere während der Bearbeitung deinen Profilnamen nicht und stelle sicher, dass dein Profil öffentlich erreichbar ist.
+
+Bei Fragen kannst du jederzeit über unsere Kontaktseite eine Nachricht senden.
+
+Viele Grüße
+Dein FameBoost.de Team

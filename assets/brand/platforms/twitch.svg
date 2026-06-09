@@ -1,0 +1,6 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" role="img" aria-label="Twitch">
+  <rect width="64" height="64" rx="18" fill="#9146ff"/>
+  <path d="M17 12h36v25.5L42.5 48H34l-6 6h-7v-6h-9V21l5-9Z" fill="#fff"/>
+  <path d="M22 18v25h9v6l6-6h8l5-5V18H22Z" fill="#5a24b8"/>
+  <path d="M35 25h5v12h-5V25Zm-10 0h5v12h-5V25Z" fill="#fff"/>
+</svg>
