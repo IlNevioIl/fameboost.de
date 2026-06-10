@@ -6,4 +6,7 @@ Thumbs.db
 .env
 .env.*
 frontend/api/contact-local.log
+frontend/api/_private/config.local.php
+frontend/api/_private/data/*.json
+frontend/api/_private/data/*.log
 tools/php/

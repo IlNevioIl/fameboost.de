@@ -250,6 +250,8 @@ const mainFaq = [
   ["Kann ich mehrere Pakete kombinieren?", "Ja. Du kannst mehrere Produkte in den Warenkorb legen und gemeinsam bestellen."]
 ];
 
+let productLimits = {};
+
 function getConfig() {
   return { ...defaultConfig, ...JSON.parse(localStorage.getItem("fk24_config") || "{}") };
 }
@@ -285,6 +287,49 @@ function eur(value) {
 
 function amountLabel(amount) {
   return Number(amount).toLocaleString("de-DE");
+}
+
+async function loadProductLimits() {
+  try {
+    const data = await apiJson("/api/product-limits.php");
+    productLimits = data.limits || {};
+  } catch {
+    productLimits = {};
+  }
+}
+
+function staticProductMax(product) {
+  return Math.max(...product.quantities.map((row) => Number(row[0])));
+}
+
+function productMaxQuantity(slug, product) {
+  const mappedMax = Number(productLimits[slug]?.max || 0);
+  return Number.isFinite(mappedMax) && mappedMax > 0 ? mappedMax : staticProductMax(product);
+}
+
+function productLimitHint(slug, product) {
+  const limit = productLimits[slug] || {};
+  const max = productMaxQuantity(slug, product);
+  if (limit.available === false) {
+    return limit.availability_message || "Dieses Produkt ist aktuell kurzzeitig nicht verfügbar.";
+  }
+  if (limit.has_reseller_mapping && limit.max) {
+    return `Die maximal mögliche Menge liegt aktuell bei: ${amountLabel(max)}.`;
+  }
+  return `Aktuell im Shop vorbereitet bis maximal ${amountLabel(max)}.`;
+}
+
+function productAvailabilityMessage(slug) {
+  const limit = productLimits[slug] || {};
+  return limit.available === false ? (limit.availability_message || "Dieses Produkt ist aktuell kurzzeitig nicht verfügbar.") : "";
+}
+
+function selectedConfiguratorQuantity(form, product) {
+  const active = form.querySelector(".option.active");
+  if (active?.matches("[data-custom]")) {
+    return Number(form.querySelector("[data-custom-qty]")?.value || 0);
+  }
+  return Number(active?.dataset.qty || product.quantities[0][0]);
 }
 
 function pathTo(slug) {
@@ -534,15 +579,17 @@ function quickProductInfo(number, title, text) {
 
 function configurator(slug, product) {
   const first = product.quantities[0];
+  const maxQuantity = productMaxQuantity(slug, product);
   return `<form class="configurator product-buy-box reveal" style="${platformStyle(product.platform)}" data-configurator data-slug="${slug}">
     <div class="config-head">${platformLogo(product.platform)}<div><span>Direkt bestellen</span><h2>Paket konfigurieren</h2></div></div>
     <div class="field"><label>Wähle deine ${product.type}</label><div class="option-grid" data-qty-options>${product.quantities.map((q, i) => `<button class="option ${i === 0 ? "active" : ""}" type="button" data-qty="${q[0]}"><strong>${amountLabel(q[0])}</strong><small>${eur(q[1])}</small></button>`).join("")}<button class="option" type="button" data-custom><strong>Eigene</strong><small>Menge</small></button></div></div>
-    <div class="field" data-custom-row style="display:none"><label>Eigene Menge</label><input class="input" type="number" min="50" step="50" data-custom-qty placeholder="z. B. 1500"></div>
+    <div class="field" data-custom-row style="display:none"><label>Eigene Menge</label><input class="input" type="number" min="50" max="${maxQuantity}" step="50" data-custom-qty placeholder="z. B. 1500"><small class="limit-hint" data-limit-hint>${productLimitHint(slug, product)}</small></div>
     <div class="field"><label>Wie lautet dein Profilname oder Link?</label><input class="input" required name="profile" placeholder="z. B. @deinprofil oder Profil-Link"><small>Bitte stelle sicher, dass dein Profil öffentlich erreichbar ist, damit die Bestellung korrekt verarbeitet werden kann.</small></div>
     <div class="field"><label>Liefergeschwindigkeit</label><select class="select" name="speed"><option value="Standard" data-price="0">Standard</option><option value="Schnellere Bearbeitung" data-price="3.99">Schnellere Bearbeitung (+3,99 €)</option><option value="Individuelle Geschwindigkeit" data-price="3.99">Individuelle Geschwindigkeit (+3,99 €)</option></select></div>
     <div class="field"><label>Refill-Option</label><select class="select" name="refill"><option value="Ohne Refill" data-price="0">Ohne Refill</option><option value="30 Tage Refill-Schutz" data-price="4.99">30 Tage Refill-Schutz (+4,99 €)</option><option value="60 Tage Refill-Schutz" data-price="7.99">60 Tage Refill-Schutz (+7,99 €)</option></select><small>Mit Refill-Schutz kannst du bei ausgewählten Paketen eine Nachfüllung beantragen, falls innerhalb des Schutzzeitraums ein Teil der gelieferten Menge sinkt.</small></div>
     <div class="price-box"><span>Gesamtpreis</span><strong data-total>${eur(first[1])}</strong></div>
     <button class="btn btn-primary" style="width:100%" type="submit">In den Warenkorb</button>
+    <div class="form-status config-status" data-config-status role="status"></div>
     <div class="payment-row">${["PayPal","Visa","Mastercard","Apple Pay","Google Pay","Klarna","Sofort"].map((p) => `<span class="pay">${p}</span>`).join("")}</div>
     <div class="mini-trust"><span>Kein Passwort nötig</span><span>Sichere Zahlung</span><span>Schnelle Bearbeitung</span><span>Support bei Fragen</span></div>
   </form>`;
@@ -594,13 +641,19 @@ function summaryBox(target, label) {
   const config = getConfig();
   const cart = getCart();
   const subtotal = cart.reduce((sum, item) => sum + item.price, 0);
-  return `<aside class="checkout-box reveal"><h2 style="font-size:28px">Bestellübersicht</h2><div class="summary-row"><span>Zwischensumme</span><strong>${eur(subtotal)}</strong></div><div class="coupon-box"><strong>Aktionscode vorhanden?</strong><small>Den Code kannst du später auf der sicheren Zahlungsseite eingeben. Der Rabatt wird dort berechnet und angewendet.</small></div><div class="summary-row total"><span>Gesamtpreis</span><strong>${eur(subtotal)}</strong></div><a class="btn btn-primary" style="width:100%" href="${target}">${label}</a></aside>`;
+  const multi = cart.length > 1;
+  return `<aside class="checkout-box reveal"><h2 style="font-size:28px">Bestellübersicht</h2><div class="summary-row"><span>Zwischensumme</span><strong>${eur(subtotal)}</strong></div><div class="coupon-box"><strong>Aktionscode vorhanden?</strong><small>Den Code kannst du später auf der sicheren Zahlungsseite eingeben. Der Rabatt wird dort berechnet und angewendet.</small></div><div class="summary-row total"><span>Gesamtpreis</span><strong>${eur(subtotal)}</strong></div>${multi ? `<button class="btn btn-light" type="button" style="width:100%" disabled>Bitte einzeln kaufen</button>` : `<a class="btn btn-primary" style="width:100%" href="${target}">${label}</a>`}</aside>`;
 }
 
 function checkoutPage() {
   const cart = getCart();
   if (!cart.length) return cartPage();
-  return `<section class="section"><div class="container"><div class="section-head reveal"><h1 style="color:var(--ink);font-size:48px">Sichere Kasse</h1><p>Deine Bestellung wird verschlüsselt übertragen. Nach erfolgreicher Zahlung erhältst du eine Bestellbestätigung per E-Mail.</p></div><div class="split"><form class="content-block reveal" data-checkout><div class="form-grid"><div class="field"><label>Vorname</label><input class="input" name="firstName" required></div><div class="field"><label>Nachname</label><input class="input" name="lastName" required></div><div class="field full"><label>E-Mail-Adresse</label><input class="input" type="email" name="email" required></div><div class="field full"><label>Rechnungsadresse</label><input class="input" name="address" required></div><div class="field full"><label>Zahlungsart</label><select class="select" name="payment"><option>PayPal</option><option>Kreditkarte</option><option>Apple Pay</option><option>Google Pay</option><option>Klarna</option><option>Sofort</option></select><small>Demo-Checkout: Live-Zahlungen werden über Stripe, PayPal oder Klarna serverseitig angeschlossen.</small></div><label class="field full"><span><input type="checkbox" required> Ich akzeptiere die AGB.</span></label><label class="field full"><span><input type="checkbox" required> Ich habe die Datenschutzhinweise gelesen.</span></label></div><button class="btn btn-primary" type="submit" style="width:100%">Jetzt zahlungspflichtig bestellen</button></form><aside>${summaryBox("#", "Bestellung prüfen")}<div class="checkout-box reveal" style="margin-top:18px"><h3>Trust-Box</h3><ul><li>Sichere SSL-Verschlüsselung</li><li>Kein Passwort erforderlich</li><li>Einmalzahlung ohne Abo</li><li>Support bei Fragen</li><li>Schnelle Bearbeitung</li></ul></div></aside></div></div></section>`;
+  if (cart.length > 1) {
+    return `<section class="section"><div class="container"><div class="content-block reveal"><h1 style="color:var(--ink);font-size:46px">Ein Produkt pro Zahlung</h1><p class="muted">Aktuell sind deine Stripe-Zahlungslinks pro Paket einzeln angelegt. Bitte entferne alle bis auf ein Produkt und kaufe die Pakete nacheinander, damit jedes Paket korrekt zugeordnet wird.</p><a class="btn btn-primary" href="/warenkorb/">Zurück zum Warenkorb</a></div></div></section>`;
+  }
+  const item = cart[0];
+  const optionNotice = item.speed !== "Standard" || item.refill !== "Ohne Refill" ? `<div class="notice">Schnellere Bearbeitung und Refill-Optionen sind in Phase 1 noch nicht über die Stripe Payment Links abgerechnet. Bitte wähle auf der Produktseite vorerst Standard und Ohne Refill.</div>` : "";
+  return `<section class="section"><div class="container"><div class="section-head reveal"><h1 style="color:var(--ink);font-size:48px">Sichere Kasse</h1><p>Deine Bestellung wird vorbereitet. Danach wirst du zur sicheren Stripe-Zahlungsseite weitergeleitet.</p></div><div class="split"><form class="content-block reveal" data-checkout>${optionNotice}<div class="form-grid"><div class="field"><label>Vorname</label><input class="input" name="firstName" required autocomplete="given-name"></div><div class="field"><label>Nachname</label><input class="input" name="lastName" required autocomplete="family-name"></div><div class="field full"><label>E-Mail-Adresse</label><input class="input" type="email" name="email" required autocomplete="email"></div><div class="field full"><label>Rechnungsadresse</label><input class="input" name="address" required autocomplete="street-address"></div><div class="field full"><label>Zahlungsart</label><input class="input" value="Stripe Zahlungsseite: PayPal, Karte, Apple Pay, Google Pay und weitere aktivierte Methoden" disabled><small>Der Rabattcode wird später direkt auf der Stripe-Zahlungsseite eingegeben.</small></div><label class="field full"><span><input type="checkbox" required> Ich akzeptiere die AGB.</span></label><label class="field full"><span><input type="checkbox" required> Ich habe die Datenschutzhinweise gelesen.</span></label></div><button class="btn btn-primary" type="submit" style="width:100%">Weiter zur sicheren Zahlung</button><div class="form-status" data-form-status role="status"></div></form><aside>${summaryBox("#", "Bestellung vorbereiten")}<div class="checkout-box reveal" style="margin-top:18px"><h3>Trust-Box</h3><ul><li>Sichere Stripe-Zahlungsseite</li><li>Kein Passwort erforderlich</li><li>Einmalzahlung ohne Abo</li><li>Support bei Fragen</li><li>Manuelle Prüfung nach Zahlung in Phase 1</li></ul></div></aside></div></div></section>`;
 }
 
 function faqPage() {
@@ -665,10 +718,375 @@ function legalPage(title) {
 }
 
 function adminPage() {
-  const products = getProducts();
-  const config = getConfig();
-  const orders = getOrders();
-  return `<section class="product-hero"><div class="container"><h1>Admin</h1><p class="lead">Lokale Verwaltungsoberfläche für Produkte, Preise, Coupon, Banner und Bestellungen. Für den Livebetrieb sollte diese Ebene in WordPress/WooCommerce oder ein abgesichertes Backend übertragen werden.</p></div></section><section class="section"><div class="container"><div class="content-block reveal"><h2>Shop-Einstellungen</h2><form data-admin-config class="form-grid"><div class="field"><label>Banner-Text</label><input class="input" name="bannerText" value="${config.bannerText}"></div><div class="field"><label>Coupon-Code</label><input class="input" name="couponCode" value="${config.couponCode}"></div><div class="field"><label>Coupon-Rabatt</label><input class="input" name="couponRate" type="number" step="0.01" value="${config.couponRate}"></div><div class="field"><label>Countdown/Label</label><input class="input" name="countdownLabel" value="${config.countdownLabel}"></div><div class="full"><button class="btn btn-primary">Einstellungen speichern</button></div></form></div><div class="content-block reveal"><h2>Produkte und Mengenstaffeln</h2><div style="overflow:auto"><table class="admin-table"><thead><tr><th>Produkt</th><th>Staffeln</th></tr></thead><tbody>${Object.entries(products).map(([slug, p]) => `<tr><td><strong>${p.title}</strong><br><span class="muted">${slug}</span></td><td>${p.quantities.map((q, i) => `<label>${amountLabel(q[0])}: <input data-admin-price data-slug="${slug}" data-index="${i}" type="number" step="0.01" value="${q[1]}"></label>`).join(" ")}</td></tr>`).join("")}</tbody></table></div><button class="btn btn-primary" data-save-prices style="margin-top:18px">Preise speichern</button></div><div class="content-block reveal"><h2>Bestellungen</h2>${orders.length ? `<table class="admin-table"><thead><tr><th>Nr.</th><th>Kunde</th><th>Produkt</th><th>Status</th></tr></thead><tbody>${orders.map((o) => `<tr><td>${o.id}</td><td>${o.customer}</td><td>${o.items.map((i) => i.title).join(", ")}</td><td><select class="select" data-order-status="${o.id}">${["Offen","Bezahlt","In Bearbeitung","Teilweise abgeschlossen","Abgeschlossen","Refill angefragt","Storniert","Rückerstattet"].map((s) => `<option ${o.status === s ? "selected" : ""}>${s}</option>`).join("")}</select></td></tr>`).join("")}</tbody></table>` : `<p class="muted">Noch keine Demo-Bestellungen vorhanden.</p>`}</div></div></section>`;
+  return `<section class="product-hero"><div class="container"><h1>Admin</h1><p class="lead">Backend-Übersicht für Bestellungen, Zahlungsprüfung, Reseller-Mapping, Status, Refill und Zählerstände. Aktuell ohne Login, vor Production absichern.</p></div></section><section class="section"><div class="container"><div class="content-block reveal"><div class="admin-toolbar"><div><h2>Bestellungen</h2><p class="muted">Phase 1: Zahlung wird über Stripe Payment Links geprüft. Bei niedriger Reseller-Balance werden bezahlte Bestellungen automatisch pausiert.</p></div><div class="admin-actions"><button class="btn btn-light" type="button" data-release-holds>Alle Holds freigeben</button><button class="btn btn-light" type="button" data-admin-refresh>Aktualisieren</button></div></div><div data-admin-orders><div class="notice">Bestellungen werden geladen...</div></div></div><div class="content-block reveal"><div class="admin-toolbar"><div><h2>Reseller-Service-Mapping</h2><p class="muted">Suche Services aus dem Reseller-Panel und ordne sie unseren Produkten zu. Gespeichert wird nur die Service-ID und Metadaten, nicht dein API-Key.</p></div><button class="btn btn-light" type="button" data-services-refresh>Services neu laden</button></div><div data-reseller-health><div class="notice">Service-Verfügbarkeit wird geprüft...</div></div><div data-service-mapping><div class="notice">Services werden geladen...</div></div></div></div></section>`;
+}
+
+async function apiJson(url, options = {}) {
+  const response = await fetch(url, {
+    ...options,
+    headers: {
+      "Accept": "application/json",
+      ...(options.body instanceof FormData ? {} : { "Content-Type": "application/json" }),
+      ...(options.headers || {})
+    }
+  });
+  const data = await response.json().catch(() => ({}));
+  if (!response.ok || data.ok === false) throw new Error(data.message || "Die Anfrage konnte nicht verarbeitet werden.");
+  return data;
+}
+
+function centsToEur(cents) {
+  return eur(Number(cents || 0) / 100);
+}
+
+function orderSuccessPage() {
+  return `<section class="product-hero"><div class="container"><h1>Bestellung erfolgreich vorbereitet</h1><p class="lead">Hier siehst du den aktuellen Status deiner Bestellung. Nach der Stripe-Zahlung wartet diese Seite auf die Webhook-Bestätigung und zeigt danach die nächsten Schritte.</p></div></section><section class="section"><div class="container split"><div class="content-block reveal" data-order-status-panel><div class="notice">Status wird geladen...</div></div><aside class="checkout-box reveal"><h2>Wichtig</h2><ul><li>Bitte ändere deinen Profilnamen während der Bearbeitung nicht.</li><li>Dein Profil oder Link sollte öffentlich erreichbar sein.</li><li>Diese Statusseite funktioniert in dem Browser, mit dem du bestellt hast.</li></ul></aside></div></div></section>`;
+}
+
+function getOrderLookupFromUrl() {
+  if (location.search) {
+    history.replaceState({}, "", location.pathname);
+  }
+  try {
+    return JSON.parse(localStorage.getItem("fb_last_order") || "{}");
+  } catch {
+    return {};
+  }
+}
+
+function renderOrderStatus(order, token) {
+  const steps = order.steps || [];
+  return `<h2>Status: ${order.status_label}</h2><p class="muted">${order.message}</p><div class="progress-shell"><div class="progress-bar" style="width:${order.progress || 20}%"></div></div><div class="order-detail-grid"><div><strong>Bestellnummer</strong><span>${order.order_number}</span></div><div><strong>Produkt</strong><span>${order.product}</span></div><div><strong>Menge</strong><span>${amountLabel(order.quantity)} ${order.type}</span></div><div><strong>Gesamt</strong><span>${centsToEur(order.amount_total_cents)}</span></div></div><div class="status-steps">${steps.map((step) => `<div class="status-step ${step.state}"><span></span><strong>${step.label}</strong></div>`).join("")}</div>${feedbackBlock(order, token)}`;
+}
+
+function feedbackBlock(order, token) {
+  if (order.feedback_submitted) return `<div class="notice">Danke, dein Feedback wurde gespeichert.</div>`;
+  return `<form class="feedback-box" data-feedback-form><h3>Feedback geben</h3><p class="muted">Wie zufrieden bist du bisher mit dem Ablauf?</p><input type="hidden" name="order_number" value="${order.order_number}"><input type="hidden" name="token" value="${token || ""}"><div class="stars" data-stars>${[1,2,3,4,5].map((n) => `<label><input type="radio" name="rating" value="${n}" ${n === 5 ? "checked" : ""}><span>★</span></label>`).join("")}</div><textarea name="message" placeholder="Optionales Feedback"></textarea><button class="btn btn-primary" type="submit">Feedback speichern</button><div class="form-status" data-form-status></div></form>`;
+}
+
+async function loadOrderStatus() {
+  const panel = document.querySelector("[data-order-status-panel]");
+  if (!panel) return;
+  const lookup = getOrderLookupFromUrl();
+  if (!lookup.order || !lookup.token) {
+    panel.innerHTML = `<div class="notice">Keine Bestellung in diesem Browser gefunden. Öffne die Seite bitte direkt nach der Zahlung in demselben Browser.</div>`;
+    return;
+  }
+  try {
+    const data = await apiJson(`/api/order-status.php?order=${encodeURIComponent(lookup.order)}&token=${encodeURIComponent(lookup.token)}`);
+    panel.innerHTML = renderOrderStatus(data.order, lookup.token);
+  } catch (error) {
+    panel.innerHTML = `<div class="notice">${error.message}</div>`;
+  }
+}
+
+let orderStatusTimer = 0;
+
+function startOrderStatusPolling() {
+  clearInterval(orderStatusTimer);
+  if (!document.querySelector("[data-order-status-panel]")) return;
+  orderStatusTimer = setInterval(() => {
+    if (!document.querySelector("[data-order-status-panel]")) {
+      clearInterval(orderStatusTimer);
+      return;
+    }
+    loadOrderStatus();
+  }, 5000);
+}
+
+async function createBackendOrder(form) {
+  const cart = getCart();
+  const status = form.querySelector("[data-form-status]");
+  const button = form.querySelector("button[type='submit']");
+  if (cart.length !== 1) {
+    if (status) status.textContent = "Bitte kaufe aktuell genau ein Produkt pro Zahlung.";
+    return;
+  }
+  const item = cart[0];
+  const payload = {
+    firstName: form.firstName.value,
+    lastName: form.lastName.value,
+    email: form.email.value,
+    address: form.address.value,
+    items: [{
+      slug: item.slug,
+      quantity: item.quantity,
+      profile: item.profile,
+      speed: item.speed,
+      refill: item.refill
+    }]
+  };
+  if (button) {
+    button.disabled = true;
+    button.textContent = "Bestellung wird vorbereitet...";
+  }
+  if (status) status.textContent = "";
+  try {
+    const result = await apiJson("/api/create-order.php", {
+      method: "POST",
+      body: JSON.stringify(payload)
+    });
+    localStorage.setItem("fb_last_order", JSON.stringify({ order: result.order_number, token: result.public_token, status_url: result.status_url }));
+    setCart([]);
+    location.href = result.redirect_url;
+  } catch (error) {
+    if (status) status.textContent = error.message;
+    if (button) {
+      button.disabled = false;
+      button.textContent = "Weiter zur sicheren Zahlung";
+    }
+  }
+}
+
+function renderAdminOrders(orders, notice, meta = {}) {
+  if (!orders.length) return `<div class="notice">${notice || "Noch keine Bestellungen vorhanden."}</div>`;
+  const statuses = ["pending_external_payment", "payment_failed", "manual_payment_check", "paid", "fulfillment_queued", "fulfillment_hold", "sent_to_reseller", "in_progress", "partially_completed", "completed", "refill_requested", "needs_review", "canceled", "refunded"];
+  const balance = meta.last_reseller_balance?.balance !== undefined ? `${meta.last_reseller_balance.balance} ${meta.last_reseller_balance.currency || ""}` : "noch nicht geprüft";
+  const holdNotice = meta.hold_count ? `<div class="notice hold-notice"><strong>${meta.hold_count} Bestellung(en) auf Hold.</strong><br>Letzte Panel-Balance: ${balance}. Mindestwert: ${meta.min_reseller_balance ?? 20}. Lade Balance nach und klicke dann auf „Alle Holds freigeben“ oder gib einzelne Bestellungen frei.</div>` : "";
+  return `${notice ? `<div class="notice">${notice}</div>` : ""}${holdNotice}<div class="admin-order-list">${orders.map((order) => {
+    const resellerMeta = [
+      order.reseller_service_id ? `Service #${order.reseller_service_id}` : "",
+      order.reseller_service_name ? order.reseller_service_name : "",
+      order.reseller_order_id ? `JAP-ID: ${order.reseller_order_id}` : "",
+      order.reseller_status ? `JAP-Status: ${order.reseller_status}` : "",
+      order.estimated_reseller_cost !== null && order.estimated_reseller_cost !== undefined ? `Kosten ca. ${Number(order.estimated_reseller_cost).toFixed(4)}` : "",
+      order.status === "fulfillment_hold" && order.hold_email_sent_at ? `Kunden-Mail: ${new Date(order.hold_email_sent_at).toLocaleString("de-DE")}` : "",
+      order.status === "fulfillment_hold" && order.admin_hold_email_sent_at ? `Admin-Mail: ${new Date(order.admin_hold_email_sent_at).toLocaleString("de-DE")}` : "",
+      order.reseller_remains !== null && order.reseller_remains !== undefined ? `Rest: ${order.reseller_remains}` : ""
+    ].filter(Boolean).join(" · ");
+    return `<article class="admin-order-card">
+      <div class="admin-order-head">
+        <div><strong>${order.order_number}</strong><span>${order.status_label} · ${new Date(order.created_at).toLocaleString("de-DE")}</span></div>
+        <span class="badge">${centsToEur(order.amount_total_cents)}</span>
+      </div>
+      <div class="order-detail-grid">
+        <div><strong>Kunde</strong><span>${order.customer_name || "Unbekannt"}<br>${order.customer_email}</span></div>
+        <div><strong>Produkt</strong><span>${order.product}<br>${amountLabel(order.quantity)} ${order.type}</span></div>
+        <div><strong>Ziel</strong><a href="${order.target_url}" target="_blank" rel="noopener">${order.target}</a></div>
+        <div><strong>Stripe</strong><a href="${order.payment_link_url}" target="_blank" rel="noopener">${order.payment_link_id}</a></div>
+      </div>
+      ${resellerMeta ? `<div class="admin-meta">${resellerMeta}</div>` : ""}
+      <form class="admin-counts" data-admin-counts data-order="${order.order_number}">
+        <label>Start-Zähler<input class="input" name="baseline_count" type="number" min="0" value="${order.baseline_count ?? ""}"></label>
+        <label>Nach Lieferung<input class="input" name="completed_count" type="number" min="0" value="${order.completed_count ?? ""}"></label>
+        <button class="btn btn-light" type="submit">Zähler speichern</button>
+        ${order.lost_count !== null && order.lost_count !== undefined ? `<span class="lost-count">Möglicher Drop: ${amountLabel(order.lost_count)}</span>` : ""}
+      </form>
+      <div class="admin-actions">
+        <select class="select" data-admin-status="${order.order_number}">${statuses.map((status) => `<option value="${status}" ${order.status === status ? "selected" : ""}>${status}</option>`).join("")}</select>
+        <button class="btn btn-light" type="button" data-admin-action="${order.status === "fulfillment_hold" ? "release_hold" : "send_reseller"}" data-order="${order.order_number}">${order.status === "fulfillment_hold" ? "Freigeben" : "An Reseller senden"}</button>
+        <button class="btn btn-light" type="button" data-admin-action="poll_reseller" data-order="${order.order_number}">Status abfragen</button>
+        <button class="btn btn-light" type="button" data-admin-action="request_refill" data-order="${order.order_number}">Refill vormerken</button>
+      </div>
+    </article>`;
+  }).join("")}</div>`;
+}
+
+async function loadAdminOrders() {
+  const root = document.querySelector("[data-admin-orders]");
+  if (!root) return;
+  root.innerHTML = `<div class="notice">Bestellungen werden geladen...</div>`;
+  try {
+    const data = await apiJson("/api/admin-orders.php");
+    root.innerHTML = renderAdminOrders(data.orders || [], data.notice || "", data);
+  } catch (error) {
+    root.innerHTML = `<div class="notice">${error.message}</div>`;
+  }
+}
+
+let resellerServicesState = { products: [], services: [], query: "", sort: "rate_asc", health: null };
+let resellerHealthTimer = 0;
+
+function serviceSearchText(service) {
+  return [service.service, service.name, service.category, service.type, service.rate, service.min, service.max].join(" ").toLowerCase();
+}
+
+function numericServiceValue(value) {
+  const normalized = String(value ?? "").replace(",", ".").replace(/[^0-9.\-]/g, "");
+  return Number.isFinite(Number(normalized)) ? Number(normalized) : null;
+}
+
+function parseCompactNumber(value) {
+  const text = String(value || "").trim().toLowerCase().replace(",", ".");
+  const match = text.match(/([0-9]+(?:\.[0-9]+)?)\s*([kmb])?/i);
+  if (!match) return null;
+  const base = Number(match[1]);
+  const multiplier = match[2] === "k" ? 1000 : match[2] === "m" ? 1000000 : match[2] === "b" ? 1000000000 : 1;
+  return base * multiplier;
+}
+
+function serviceTiming(service) {
+  const text = `${service.name || ""} ${service.category || ""}`.toLowerCase();
+  const startMatch = text.match(/start(?:\s*time)?[^0-9]*(\d+(?:[.,]\d+)?)\s*-\s*(\d+(?:[.,]\d+)?)\s*(min|mins|minute|minutes|h|hr|hrs|hour|hours|d|day|days)/i)
+    || text.match(/start(?:\s*time)?[^0-9]*(\d+(?:[.,]\d+)?)\s*(min|mins|minute|minutes|h|hr|hrs|hour|hours|d|day|days)/i);
+  let startHours = null;
+  if (startMatch) {
+    const unit = startMatch[startMatch.length - 1].toLowerCase();
+    const value = Number(String(startMatch[startMatch.length - 2]).replace(",", "."));
+    startHours = unit.startsWith("min") ? value / 60 : unit.startsWith("d") ? value * 24 : value;
+  }
+  const speedMatch = text.match(/(?:speed|up to)[^0-9]*([0-9.,]+\s*[kmb]?)[^\w]*(?:\/|per\s*)(d|day|h|hour)/i);
+  let speedPerDay = null;
+  if (speedMatch) {
+    const amount = parseCompactNumber(speedMatch[1]);
+    if (amount !== null) speedPerDay = speedMatch[2].startsWith("h") ? amount * 24 : amount;
+  }
+  return { startHours, speedPerDay };
+}
+
+function serviceSortValue(service, sort) {
+  const timing = serviceTiming(service);
+  if (sort.startsWith("rate")) return numericServiceValue(service.rate) ?? Number.POSITIVE_INFINITY;
+  if (sort.startsWith("min")) return numericServiceValue(service.min) ?? Number.POSITIVE_INFINITY;
+  if (sort.startsWith("max")) return numericServiceValue(service.max) ?? 0;
+  if (sort.startsWith("start")) return timing.startHours ?? Number.POSITIVE_INFINITY;
+  if (sort.startsWith("speed")) return timing.speedPerDay ?? 0;
+  return 0;
+}
+
+function getFilteredServices() {
+  const query = resellerServicesState.query.trim().toLowerCase();
+  const base = query ? resellerServicesState.services.filter((service) => serviceSearchText(service).includes(query)) : resellerServicesState.services.slice();
+  const sort = resellerServicesState.sort || "rate_asc";
+  const desc = sort.endsWith("_desc");
+  return base.sort((a, b) => {
+    const av = serviceSortValue(a, sort);
+    const bv = serviceSortValue(b, sort);
+    if (av === bv) return String(a.name || "").localeCompare(String(b.name || ""));
+    return desc ? bv - av : av - bv;
+  });
+}
+
+function adminProductBySlug(slug) {
+  return resellerServicesState.products.find((product) => product.slug === slug) || null;
+}
+
+function adminProductOfferMax(slug) {
+  const mappedProduct = adminProductBySlug(slug);
+  const adminQuantities = (mappedProduct?.quantities || []).map(Number).filter(Number.isFinite);
+  if (adminQuantities.length) return Math.max(...adminQuantities);
+  const product = getProducts()[slug];
+  return product ? staticProductMax(product) : 0;
+}
+
+function serviceMaxWarning(service, slug) {
+  const serviceMax = numericServiceValue(service?.max);
+  const offerMax = adminProductOfferMax(slug);
+  if (!serviceMax || !offerMax || serviceMax >= offerMax) return "";
+  return `Warnung: Dieser Reseller-Service erlaubt maximal ${amountLabel(serviceMax)}, wir bieten bei diesem Produkt aber bis ${amountLabel(offerMax)} an. Kunden könnten sonst größere Pakete kaufen, die nicht zum Service passen.`;
+}
+
+function renderServiceMapping(data) {
+  resellerServicesState = { ...resellerServicesState, products: data.products || [], services: data.services || [], health: data.health || resellerServicesState.health };
+  const products = resellerServicesState.products;
+  const services = resellerServicesState.services;
+  const filtered = getFilteredServices();
+  const shown = filtered.slice(0, 120);
+  return `${data.warning ? `<div class="notice">${data.warning}</div>` : ""}<div class="service-map-layout">
+    <aside class="service-products">
+      <h3>FameBoost-Produkte</h3>
+      ${products.map((product, index) => `<button class="service-product ${index === 0 ? "active" : ""}" type="button" data-service-product="${product.slug}">
+        <strong>${product.label}</strong>
+        <span>${product.mapping?.service_id ? `Service #${product.mapping.service_id}` : "Noch nicht gemappt"}</span>
+      </button>`).join("")}
+    </aside>
+    <div class="service-browser">
+      <div class="service-search-row">
+        <input class="input" data-service-search placeholder="Reseller-Service suchen, z. B. Instagram Followers refill" value="${resellerServicesState.query}">
+        <select class="select" data-service-sort>
+          <option value="rate_asc" ${resellerServicesState.sort === "rate_asc" ? "selected" : ""}>Rate: günstig zuerst</option>
+          <option value="rate_desc" ${resellerServicesState.sort === "rate_desc" ? "selected" : ""}>Rate: teuer zuerst</option>
+          <option value="start_asc" ${resellerServicesState.sort === "start_asc" ? "selected" : ""}>Startzeit: schnell zuerst</option>
+          <option value="speed_desc" ${resellerServicesState.sort === "speed_desc" ? "selected" : ""}>Speed: schnell zuerst</option>
+          <option value="min_asc" ${resellerServicesState.sort === "min_asc" ? "selected" : ""}>Min: klein zuerst</option>
+          <option value="max_desc" ${resellerServicesState.sort === "max_desc" ? "selected" : ""}>Max: groß zuerst</option>
+        </select>
+        <span>${services.length} Services geladen${data.cached ? " · Cache" : ""}</span>
+      </div>
+      <div data-active-product-note>${products[0] ? renderActiveProductNote(products[0]) : ""}</div>
+      <div class="service-list">
+        ${shown.map((service) => renderServiceCard(service, products[0]?.slug || "")).join("") || `<div class="notice">Keine Services gefunden.</div>`}
+      </div>
+    </div>
+  </div>`;
+}
+
+function renderActiveProductNote(product) {
+  const maxNote = product.mapping?.max ? `<br><strong>Automatisches Max-Limit:</strong> ${amountLabel(product.mapping.max)} wird für eigene Mengen im Shop übernommen.` : "";
+  const mappedServiceMax = numericServiceValue(product.mapping?.max);
+  const offeredMax = adminProductOfferMax(product.slug);
+  const maxWarning = mappedServiceMax && offeredMax && mappedServiceMax < offeredMax ? `<br><strong class="admin-danger-text">Max-Warnung:</strong> Der zugewiesene Service kann maximal ${amountLabel(mappedServiceMax)}, im Shop sind aber bis ${amountLabel(offeredMax)} angeboten.` : "";
+  const health = resellerServicesState.health?.products?.[product.slug];
+  const healthNote = health && health.available === false ? `<br><strong class="admin-danger-text">Warnung:</strong> Zugewiesener Service #${health.service_id} ist aktuell nicht verfügbar. Käufe für dieses Produkt werden blockiert, bis du neu zuweist.` : "";
+  return `<div class="admin-meta ${health?.available === false || maxWarning ? "admin-meta-danger" : ""}"><strong>Aktives Produkt:</strong> ${product.label} · Mengen: ${(product.quantities || []).map(amountLabel).join(", ")}${product.mapping?.service_name ? `<br><strong>Aktuelles Mapping:</strong> #${product.mapping.service_id} · ${product.mapping.service_name}` : ""}${maxNote}${maxWarning}${healthNote}</div>`;
+}
+
+function renderServiceCard(service, activeSlug) {
+  const timing = serviceTiming(service);
+  const start = timing.startHours !== null ? `Start ca. ${timing.startHours < 1 ? Math.round(timing.startHours * 60) + " Min" : timing.startHours + " h"}` : "";
+  const speed = timing.speedPerDay !== null ? `Speed ca. ${amountLabel(Math.round(timing.speedPerDay))}/Tag` : "";
+  const meta = [`ID ${service.service}`, service.category, service.type, service.rate ? `Rate ${service.rate}` : "", service.min ? `Min ${service.min}` : "", service.max ? `Max ${service.max}` : "", start, speed].filter(Boolean).join(" · ");
+  const warning = serviceMaxWarning(service, activeSlug);
+  return `<article class="service-card ${warning ? "service-card-warning" : ""}">
+    <div>
+      <strong>${service.name || "Unbenannter Service"}</strong>
+      <span>${meta}</span>
+      ${warning ? `<em>${warning}</em>` : ""}
+    </div>
+    <button class="btn btn-light" type="button" data-map-service="${service.service}" data-active-slug="${activeSlug}">Auswählen</button>
+  </article>`;
+}
+
+function updateServiceMappingView() {
+  const root = document.querySelector("[data-service-mapping]");
+  if (!root) return;
+  const activeSlug = root.querySelector(".service-product.active")?.dataset.serviceProduct || resellerServicesState.products[0]?.slug || "";
+  const activeProduct = resellerServicesState.products.find((product) => product.slug === activeSlug) || resellerServicesState.products[0];
+  const filtered = getFilteredServices();
+  const shown = filtered.slice(0, 120);
+  const note = root.querySelector("[data-active-product-note]");
+  const list = root.querySelector(".service-list");
+  if (note && activeProduct) note.innerHTML = renderActiveProductNote(activeProduct);
+  if (list) list.innerHTML = shown.map((service) => renderServiceCard(service, activeProduct?.slug || "")).join("") || `<div class="notice">Keine Services gefunden.</div>`;
+}
+
+async function loadServiceMapping(refresh = false) {
+  const root = document.querySelector("[data-service-mapping]");
+  if (!root) return;
+  root.innerHTML = `<div class="notice">Services werden geladen...</div>`;
+  try {
+    const data = await apiJson(`/api/admin-reseller-services.php${refresh ? "?refresh=1" : ""}`);
+    root.innerHTML = renderServiceMapping(data);
+  } catch (error) {
+    root.innerHTML = `<div class="notice">${error.message}<br>Trage zuerst den Reseller-API-Key in <code>frontend/api/_private/config.local.php</code> ein.</div>`;
+  }
+}
+
+function renderResellerHealth(health) {
+  if (!health) return `<div class="notice">Noch kein Service-Health-Check vorhanden.</div>`;
+  const checked = health.checked_at ? new Date(health.checked_at).toLocaleString("de-DE") : "noch nicht geprüft";
+  if (health.ok === false) {
+    return `<div class="notice hold-notice"><strong>Service-Check fehlgeschlagen.</strong><br>${health.message || "Reseller-Services konnten nicht geprüft werden."}<br>Letzter Check: ${checked}</div>`;
+  }
+  const unavailable = health.unavailable || [];
+  if (!unavailable.length) {
+    return `<div class="notice service-health-ok"><strong>Alle gemappten Reseller-Services verfügbar.</strong><br>${health.mapped_count || 0} Mapping(s), ${health.service_count || 0} Services geprüft. Letzter Check: ${checked}</div>`;
+  }
+  return `<div class="notice service-health-danger"><strong>${unavailable.length} Mapping(s) müssen dringend gefixt werden.</strong><br>Käufe für diese Produkte werden blockiert, bis ein verfügbarer Service zugewiesen ist. Letzter Check: ${checked}<ul>${unavailable.map((item) => `<li>${item.label}: Service #${item.service_id} ${item.service_name ? `· ${item.service_name}` : ""}</li>`).join("")}</ul></div>`;
+}
+
+async function loadResellerHealth(refresh = false) {
+  const root = document.querySelector("[data-reseller-health]");
+  if (!root) return;
+  try {
+    const data = await apiJson(`/api/admin-reseller-health.php${refresh ? "?refresh=1" : ""}`);
+    resellerServicesState.health = data.health || null;
+    root.innerHTML = renderResellerHealth(resellerServicesState.health);
+    await loadProductLimits();
+    updateServiceMappingView();
+  } catch (error) {
+    root.innerHTML = `<div class="notice hold-notice">${error.message}</div>`;
+  }
 }
 
 function bindEvents() {
@@ -699,6 +1117,74 @@ function bindEvents() {
       saveProducts(products);
       route();
     }
+    const adminRefresh = event.target.closest("[data-admin-refresh]");
+    if (adminRefresh) {
+      loadAdminOrders();
+      loadResellerHealth(true);
+    }
+    const releaseHolds = event.target.closest("[data-release-holds]");
+    if (releaseHolds) {
+      releaseHolds.disabled = true;
+      releaseHolds.textContent = "Holds werden geprüft...";
+      apiJson("/api/admin-bulk-action.php", {
+        method: "POST",
+        body: JSON.stringify({ action: "release_holds" })
+      }).then((result) => {
+        alert(`${result.message} Gesendet: ${result.stats?.sent ?? 0}, weiter auf Hold: ${result.stats?.still_on_hold ?? 0}, Fehler: ${result.stats?.failed ?? 0}`);
+        loadAdminOrders();
+      }).catch((error) => alert(error.message)).finally(() => {
+        releaseHolds.disabled = false;
+        releaseHolds.textContent = "Alle Holds freigeben";
+      });
+    }
+    const servicesRefresh = event.target.closest("[data-services-refresh]");
+    if (servicesRefresh) {
+      loadResellerHealth(true);
+      loadServiceMapping(true);
+    }
+    const serviceProduct = event.target.closest("[data-service-product]");
+    if (serviceProduct) {
+      document.querySelectorAll("[data-service-product]").forEach((node) => node.classList.remove("active"));
+      serviceProduct.classList.add("active");
+      updateServiceMappingView();
+    }
+    const mapService = event.target.closest("[data-map-service]");
+    if (mapService) {
+      const service = resellerServicesState.services.find((item) => item.service === mapService.dataset.mapService);
+      const slug = mapService.dataset.activeSlug;
+      if (service && slug) {
+        const maxWarning = serviceMaxWarning(service, slug);
+        if (maxWarning && !confirm(`${maxWarning}\n\nTrotzdem diesem Produkt zuweisen?`)) {
+          return;
+        }
+        apiJson("/api/admin-reseller-mapping.php", {
+          method: "POST",
+          body: JSON.stringify({
+            slug,
+            service_id: service.service,
+            service_name: service.name,
+            category: service.category,
+            type: service.type,
+            rate: service.rate,
+            min: service.min,
+            max: service.max,
+            refill: service.refill,
+            cancel: service.cancel
+          })
+        }).then(async () => {
+          await loadProductLimits();
+          await loadResellerHealth(true);
+          loadServiceMapping();
+        }).catch((error) => alert(error.message));
+      }
+    }
+    const adminAction = event.target.closest("[data-admin-action]");
+    if (adminAction) {
+      apiJson("/api/admin-order-action.php", {
+        method: "POST",
+        body: JSON.stringify({ order_number: adminAction.dataset.order, action: adminAction.dataset.adminAction })
+      }).then(loadAdminOrders).catch((error) => alert(error.message));
+    }
   });
 
   document.addEventListener("submit", (event) => {
@@ -707,8 +1193,8 @@ function bindEvents() {
       event.preventDefault();
       const slug = form.dataset.slug;
       const product = getProducts()[slug];
-      const active = form.querySelector(".option.active");
-      const qty = Number(active?.dataset.qty || form.querySelector("[data-custom-qty]").value || product.quantities[0][0]);
+      if (!validateConfigurator(form, { showEmpty: true })) return;
+      const qty = selectedConfiguratorQuantity(form, product);
       const base = priceFor(product, qty);
       const speed = form.speed;
       const refill = form.refill;
@@ -718,15 +1204,33 @@ function bindEvents() {
     }
     if (form.matches("[data-checkout]")) {
       event.preventDefault();
-      const data = new FormData(form);
-      const order = { id: `FK24-${Date.now().toString().slice(-8)}`, customer: `${data.get("firstName")} ${data.get("lastName")}`, email: data.get("email"), status: "Offen", items: getCart(), createdAt: new Date().toISOString() };
-      setOrders([order, ...getOrders()]);
-      setCart([]);
-      document.getElementById("app").innerHTML = `<section class="section"><div class="container"><div class="content-block reveal in"><h1 style="color:var(--ink);font-size:46px">Bestellung eingegangen</h1><p>Vielen Dank. Deine Demo-Bestellung ${order.id} wurde gespeichert. Die E-Mail-Bestätigung ist als Vorlage in der Seite vorbereitet und kann im Livebetrieb serverseitig versendet werden.</p><a class="btn btn-primary" href="/admin/">Bestellung im Admin ansehen</a></div></div></section>`;
+      createBackendOrder(form);
     }
     if (form.matches("[data-contact-form]")) {
       event.preventDefault();
       submitContactForm(form);
+    }
+    if (form.matches("[data-feedback-form]")) {
+      event.preventDefault();
+      const status = form.querySelector("[data-form-status]");
+      apiJson("/api/feedback.php", {
+        method: "POST",
+        body: JSON.stringify(Object.fromEntries(new FormData(form).entries()))
+      }).then((result) => {
+        form.outerHTML = `<div class="notice">${result.message}</div>`;
+      }).catch((error) => {
+        if (status) status.textContent = error.message;
+      });
+    }
+    if (form.matches("[data-admin-counts]")) {
+      event.preventDefault();
+      const payload = Object.fromEntries(new FormData(form).entries());
+      payload.order_number = form.dataset.order;
+      payload.action = "save_counts";
+      apiJson("/api/admin-order-action.php", {
+        method: "POST",
+        body: JSON.stringify(payload)
+      }).then(loadAdminOrders).catch((error) => alert(error.message));
     }
     if (form.matches("[data-generic-form], [data-newsletter]")) {
       event.preventDefault();
@@ -745,6 +1249,28 @@ function bindEvents() {
     if (event.target.matches("[data-order-status]")) {
       const orders = getOrders().map((o) => o.id === event.target.dataset.orderStatus ? { ...o, status: event.target.value } : o);
       setOrders(orders);
+    }
+    if (event.target.matches("[data-admin-status]")) {
+      apiJson("/api/admin-order-action.php", {
+        method: "POST",
+        body: JSON.stringify({ order_number: event.target.dataset.adminStatus, action: "set_status", status: event.target.value })
+      }).then(loadAdminOrders).catch((error) => alert(error.message));
+    }
+    if (event.target.matches("[data-service-search]")) {
+      resellerServicesState.query = event.target.value;
+      updateServiceMappingView();
+    }
+    if (event.target.matches("[data-service-sort]")) {
+      resellerServicesState.sort = event.target.value;
+      updateServiceMappingView();
+    }
+    if (event.target.closest("[data-configurator]")) updateConfigurator(event.target.closest("[data-configurator]"));
+  });
+
+  document.addEventListener("input", (event) => {
+    if (event.target.matches("[data-service-search]")) {
+      resellerServicesState.query = event.target.value;
+      updateServiceMappingView();
     }
     if (event.target.closest("[data-configurator]")) updateConfigurator(event.target.closest("[data-configurator]"));
   });
@@ -796,12 +1322,41 @@ function priceFor(product, qty) {
   return Math.max(productMinPrice(product), (nearest[1] / nearest[0]) * qty);
 }
 
+function validateConfigurator(form, { showEmpty = false } = {}) {
+  const product = getProducts()[form.dataset.slug];
+  if (!product) return false;
+  const active = form.querySelector(".option.active");
+  const isCustom = active?.matches("[data-custom]");
+  const qty = selectedConfiguratorQuantity(form, product);
+  const max = productMaxQuantity(form.dataset.slug, product);
+  const status = form.querySelector("[data-config-status]");
+  const submit = form.querySelector("button[type='submit']");
+  const customInput = form.querySelector("[data-custom-qty]");
+  let message = productAvailabilityMessage(form.dataset.slug);
+
+  if (!message && isCustom && (!qty || qty < 1)) {
+    message = showEmpty ? "Bitte gib eine eigene Menge ein." : "";
+  } else if (!message && qty > max) {
+    message = `Diese Menge ist aktuell zu hoch. Maximal möglich sind ${amountLabel(max)}.`;
+  }
+
+  if (customInput) {
+    customInput.max = String(max);
+    customInput.setCustomValidity(message);
+  }
+  if (status) status.textContent = message;
+  if (submit) submit.disabled = Boolean(message);
+  return !message;
+}
+
 function updateConfigurator(form) {
   const product = getProducts()[form.dataset.slug];
-  const active = form.querySelector(".option.active");
-  const qty = Number(active?.dataset.qty || form.querySelector("[data-custom-qty]").value || product.quantities[0][0]);
+  const qty = selectedConfiguratorQuantity(form, product) || product.quantities[0][0];
   const extra = Number(form.speed.selectedOptions[0].dataset.price) + Number(form.refill.selectedOptions[0].dataset.price);
   form.querySelector("[data-total]").textContent = eur(priceFor(product, qty) + extra);
+  const limitHint = form.querySelector("[data-limit-hint]");
+  if (limitHint) limitHint.textContent = productLimitHint(form.dataset.slug, product);
+  validateConfigurator(form);
 }
 
 let phoneBoostTimer = 0;
@@ -876,9 +1431,26 @@ function route() {
   else if (page === "refill") app.innerHTML = contactPage("refill");
   else if (page === "category") app.innerHTML = categoryPage(platform);
   else if (page === "admin") app.innerHTML = adminPage();
+  else if (page === "order-success") app.innerHTML = orderSuccessPage();
   else if (page === "legal") app.innerHTML = legalPage(legal || "Rechtliche Hinweise");
   reveal();
+  document.querySelectorAll("[data-configurator]").forEach(updateConfigurator);
   animatePhoneBoost();
+  if (page === "admin") {
+    loadAdminOrders();
+    loadServiceMapping();
+    loadResellerHealth(true);
+    clearInterval(resellerHealthTimer);
+    resellerHealthTimer = setInterval(() => loadResellerHealth(true), 60000);
+  } else {
+    clearInterval(resellerHealthTimer);
+  }
+  if (page === "order-success") {
+    loadOrderStatus();
+    startOrderStatusPolling();
+  } else {
+    clearInterval(orderStatusTimer);
+  }
 }
 
 function reveal() {
@@ -891,7 +1463,8 @@ function reveal() {
   nodes.forEach((node) => io.observe(node));
 }
 
-document.addEventListener("DOMContentLoaded", () => {
+document.addEventListener("DOMContentLoaded", async () => {
   bindEvents();
+  await loadProductLimits();
   route();
 });
