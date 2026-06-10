@@ -8,6 +8,8 @@ try {
     $catalog = fb_catalog();
     $health = fb_reseller_health();
     $healthProducts = isset($health['products']) && is_array($health['products']) ? $health['products'] : [];
+    $mappings = fb_reseller_mappings();
+    $productMappings = isset($mappings['product_mappings']) && is_array($mappings['product_mappings']) ? $mappings['product_mappings'] : [];
     $limits = [];
 
     foreach ($catalog as $slug => $product) {
@@ -15,15 +17,27 @@ try {
         $catalogQuantities = array_map('intval', array_keys($product['items'] ?? []));
         $catalogMax = $catalogQuantities ? max($catalogQuantities) : null;
         $healthStatus = is_array($healthProducts[$slug] ?? null) ? $healthProducts[$slug] : null;
-        $available = !$healthStatus || ($healthStatus['available'] ?? true) !== false;
+        $mapping = is_array($productMappings[$slug] ?? null) ? $productMappings[$slug] : null;
+        $mappedServiceId = (string)($mapping['service_id'] ?? '');
+        if ($healthStatus && $mappedServiceId !== '' && (string)($healthStatus['service_id'] ?? '') !== $mappedServiceId) {
+            $healthStatus = null;
+        }
+        $hasMapping = (bool)$resellerLimits['has_mapping'];
+        $available = $hasMapping && (!$healthStatus || ($healthStatus['available'] ?? true) !== false);
+        $availabilityMessage = '';
+        if (!$hasMapping) {
+            $availabilityMessage = 'Dieses Produkt ist aktuell noch nicht kaufbar, weil im Admin kein Reseller-Service zugewiesen ist.';
+        } elseif (!$available) {
+            $availabilityMessage = 'Dieses Produkt ist aktuell kurzzeitig nicht verfügbar, weil der zugewiesene Anbieter-Service geprüft werden muss.';
+        }
 
         $limits[$slug] = [
             'min' => $resellerLimits['min'],
             'max' => $resellerLimits['max'],
             'catalog_max' => $catalogMax,
-            'has_reseller_mapping' => (bool)$resellerLimits['has_mapping'],
+            'has_reseller_mapping' => $hasMapping,
             'available' => $available,
-            'availability_message' => $available ? '' : 'Dieses Produkt ist aktuell kurzzeitig nicht verfügbar, weil der zugewiesene Anbieter-Service geprüft werden muss.',
+            'availability_message' => $availabilityMessage,
             'availability_checked_at' => $healthStatus['checked_at'] ?? ($health['checked_at'] ?? null),
         ];
     }

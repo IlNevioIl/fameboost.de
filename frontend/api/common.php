@@ -592,17 +592,35 @@ function fb_mapping_health_status(string $slug, int $quantity, ?array $mapping =
         return null;
     }
 
+    $expectedServiceId = (string)$mapping['service_id'];
     $health = fb_ensure_reseller_health_fresh();
     $products = isset($health['products']) && is_array($health['products']) ? $health['products'] : [];
     $quantityKey = $slug . ':' . $quantity;
+    $status = null;
 
     if (isset($products[$quantityKey]) && is_array($products[$quantityKey])) {
-        return $products[$quantityKey];
+        $status = $products[$quantityKey];
+    } elseif (isset($products[$slug]) && is_array($products[$slug])) {
+        $status = $products[$slug];
     }
-    if (isset($products[$slug]) && is_array($products[$slug])) {
-        return $products[$slug];
+
+    if ($status && (string)($status['service_id'] ?? '') !== $expectedServiceId) {
+        $health = fb_check_reseller_mapped_services(true, true);
+        $products = isset($health['products']) && is_array($health['products']) ? $health['products'] : [];
+        if (isset($products[$quantityKey]) && is_array($products[$quantityKey])) {
+            $status = $products[$quantityKey];
+        } elseif (isset($products[$slug]) && is_array($products[$slug])) {
+            $status = $products[$slug];
+        } else {
+            $status = null;
+        }
     }
-    return null;
+
+    if ($status && (string)($status['service_id'] ?? '') !== $expectedServiceId) {
+        return null;
+    }
+
+    return $status;
 }
 
 function fb_load_json_file(string $file, array $fallback = []): array
@@ -882,6 +900,9 @@ function fb_catalog_item(string $slug, int $quantity): array
     }
     $item = $catalog[$slug]['items'][$quantity];
     $mapping = fb_reseller_service_mapping($slug, $quantity);
+    if (!$mapping || empty($mapping['service_id'])) {
+        throw new InvalidArgumentException('Dieses Produkt ist aktuell noch nicht kaufbar, weil im Admin kein Reseller-Service zugewiesen ist.');
+    }
     if ($mapping && !empty($mapping['service_id'])) {
         $healthStatus = fb_mapping_health_status($slug, $quantity, $mapping);
         if ($healthStatus && ($healthStatus['available'] ?? true) === false) {

@@ -40,7 +40,18 @@ try {
         return ['data' => $data];
     }, ['product_mappings' => [], 'quantity_mappings' => []]);
 
-    fb_json_response(['ok' => true, 'message' => $serviceId === '' ? 'Mapping entfernt.' : 'Mapping gespeichert.']);
+    $health = null;
+    try {
+        $health = fb_check_reseller_mapped_services(true, true);
+    } catch (Throwable $healthError) {
+        error_log('admin-reseller-mapping health refresh failed: ' . $healthError->getMessage() . "\n", 3, fb_data_path('errors.log'));
+    }
+
+    fb_json_response([
+        'ok' => true,
+        'message' => $serviceId === '' ? 'Mapping entfernt.' : 'Mapping gespeichert.',
+        'health' => $health,
+    ]);
 } catch (InvalidArgumentException $error) {
     fb_json_response(['ok' => false, 'message' => $error->getMessage()], 422);
 } catch (Throwable $error) {
