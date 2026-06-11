@@ -95,6 +95,126 @@ function fb_rate_limit(string $scope, int $limit, int $windowSeconds): void
     }
 }
 
+function fb_start_admin_session(): void
+{
+    if (session_status() === PHP_SESSION_ACTIVE) {
+        return;
+    }
+
+    $secure = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off') || (($_SERVER['SERVER_PORT'] ?? '') === '443');
+    session_set_cookie_params([
+        'lifetime' => 0,
+        'path' => '/',
+        'secure' => $secure,
+        'httponly' => true,
+        'samesite' => 'Strict',
+    ]);
+    session_name('fb_admin_session');
+    session_start();
+}
+
+function fb_is_admin_authenticated(): bool
+{
+    fb_start_admin_session();
+    return !empty($_SESSION['fb_admin_authenticated']);
+}
+
+function fb_require_admin_auth(): void
+{
+    if (!fb_is_admin_authenticated()) {
+        fb_json_response(['ok' => false, 'message' => 'Admin-Login erforderlich.'], 401);
+    }
+}
+
+function fb_admin_auth(): array
+{
+    return fb_load_json_file(fb_admin_auth_file(), []);
+}
+
+function fb_save_admin_auth(array $data): void
+{
+    fb_save_json_file(fb_admin_auth_file(), $data);
+}
+
+function fb_base32_encode(string $binary): string
+{
+    $alphabet = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ234567';
+    $bits = '';
+    $output = '';
+    for ($i = 0, $length = strlen($binary); $i < $length; $i++) {
+        $bits .= str_pad(decbin(ord($binary[$i])), 8, '0', STR_PAD_LEFT);
+    }
+    for ($i = 0, $length = strlen($bits); $i < $length; $i += 5) {
+        $chunk = substr($bits, $i, 5);
+        if (strlen($chunk) < 5) {
+            $chunk = str_pad($chunk, 5, '0', STR_PAD_RIGHT);
+        }
+        $output .= $alphabet[bindec($chunk)];
+    }
+    return $output;
+}
+
+function fb_base32_decode(string $base32): string
+{
+    $alphabet = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ234567';
+    $base32 = strtoupper(preg_replace('/[^A-Z2-7]/i', '', $base32) ?? '');
+    $bits = '';
+    $binary = '';
+
+    for ($i = 0, $length = strlen($base32); $i < $length; $i++) {
+        $position = strpos($alphabet, $base32[$i]);
+        if ($position === false) {
+            continue;
+        }
+        $bits .= str_pad(decbin($position), 5, '0', STR_PAD_LEFT);
+    }
+
+    for ($i = 0, $length = strlen($bits) - 7; $i < $length; $i += 8) {
+        $binary .= chr(bindec(substr($bits, $i, 8)));
+    }
+
+    return $binary;
+}
+
+function fb_generate_totp_secret(): string
+{
+    return fb_base32_encode(random_bytes(20));
+}
+
+function fb_totp_code(string $secret, ?int $timeSlice = null): string
+{
+    $timeSlice ??= (int)floor(time() / 30);
+    $secretKey = fb_base32_decode($secret);
+    $counter = pack('N*', 0) . pack('N*', $timeSlice);
+    $hash = hash_hmac('sha1', $counter, $secretKey, true);
+    $offset = ord(substr($hash, -1)) & 0x0F;
+    $value = unpack('N', substr($hash, $offset, 4))[1] & 0x7FFFFFFF;
+    return str_pad((string)($value % 1000000), 6, '0', STR_PAD_LEFT);
+}
+
+function fb_verify_totp(string $secret, string $code): bool
+{
+    $code = preg_replace('/\s+/', '', $code) ?? '';
+    if (!preg_match('/^\d{6}$/', $code)) {
+        return false;
+    }
+
+    $currentSlice = (int)floor(time() / 30);
+    for ($offset = -1; $offset <= 1; $offset++) {
+        if (hash_equals(fb_totp_code($secret, $currentSlice + $offset), $code)) {
+            return true;
+        }
+    }
+    return false;
+}
+
+function fb_admin_otpauth_uri(string $username, string $secret): string
+{
+    $label = rawurlencode('FameBoost.de:' . $username);
+    $issuer = rawurlencode('FameBoost.de');
+    return "otpauth://totp/{$label}?secret={$secret}&issuer={$issuer}&algorithm=SHA1&digits=6&period=30";
+}
+
 function fb_float_value(mixed $value): ?float
 {
     if (is_int($value) || is_float($value)) {
@@ -374,6 +494,16 @@ function fb_rate_limit_file(): string
 function fb_feedback_file(): string
 {
     return fb_data_path('feedback.json');
+}
+
+function fb_newsletter_file(): string
+{
+    return fb_data_path('newsletter_subscribers.json');
+}
+
+function fb_admin_auth_file(): string
+{
+    return fb_data_path('admin_auth.json');
 }
 
 function fb_reseller_mappings_file(): string

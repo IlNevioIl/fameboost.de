@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 require __DIR__ . '/common.php';
 
+fb_require_admin_auth();
+
 $config = fb_config();
 $rawOrders = fb_orders();
 $holdCount = count(array_filter($rawOrders, fn(array $order): bool => ($order['status'] ?? '') === 'fulfillment_hold'));

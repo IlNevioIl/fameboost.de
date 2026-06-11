@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 require __DIR__ . '/common.php';
 
+fb_require_admin_auth();
+
 try {
     $input = fb_read_input();
     $slug = trim((string)($input['slug'] ?? ''));

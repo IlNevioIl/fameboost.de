@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 require __DIR__ . '/common.php';
 
+fb_require_admin_auth();
+
 try {
     $refresh = ($_GET['refresh'] ?? '') === '1';
     $health = $refresh ? fb_check_reseller_mapped_services(true, true) : fb_reseller_health();

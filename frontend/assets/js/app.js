@@ -251,6 +251,7 @@ const mainFaq = [
 ];
 
 let productLimits = {};
+let adminAuthState = { loaded: false, loading: false, authenticated: false, setup_required: false, username: "", setup: null };
 
 function getConfig() {
   return { ...defaultConfig, ...JSON.parse(localStorage.getItem("fk24_config") || "{}") };
@@ -287,6 +288,17 @@ function eur(value) {
 
 function amountLabel(amount) {
   return Number(amount).toLocaleString("de-DE");
+}
+
+function packageValueLabel(product, quantity, price, index) {
+  const base = product.quantities[0];
+  const baseValue = Number(base?.[0] || 0) / Number(base?.[1] || 0);
+  const currentValue = Number(quantity || 0) / Number(price || 0);
+  if (!Number.isFinite(baseValue) || !Number.isFinite(currentValue) || baseValue <= 0 || index === 0) {
+    return "Basis";
+  }
+  const bonus = Math.round(((currentValue / baseValue) - 1) * 100);
+  return bonus > 0 ? `+${bonus} % mehr` : "Basis";
 }
 
 async function loadProductLimits() {
@@ -387,6 +399,32 @@ function layout() {
   document.getElementById("site-footer").innerHTML = footer();
   document.getElementById("mobile-sticky").innerHTML = `<a class="btn btn-primary" style="width:100%" href="/#produkte">Paket auswählen</a>`;
   updateCartCount();
+  renderCookieNotice();
+}
+
+function renderCookieNotice() {
+  let existing = document.getElementById("cookie-notice");
+  if (localStorage.getItem("fb_cookie_notice_ok") === "1") {
+    if (existing) existing.remove();
+    return;
+  }
+  if (!existing) {
+    existing = document.createElement("div");
+    existing.id = "cookie-notice";
+    document.body.appendChild(existing);
+  }
+  existing.className = "cookie-notice";
+  existing.innerHTML = `<div class="cookie-card" role="region" aria-label="Cookie-Hinweis">
+    <div class="cookie-icon" aria-hidden="true">i</div>
+    <div class="cookie-copy">
+      <strong>Cookie-Hinweis</strong>
+      <p>Wir nutzen aktuell nur technisch notwendige Funktionen wie Warenkorb und Bestellstatus. Kein Tracking, keine Marketing-Cookies.</p>
+    </div>
+    <div class="cookie-actions">
+      <a class="btn btn-light" href="/cookie-hinweise/">Details</a>
+      <button class="btn btn-primary" type="button" data-cookie-ok>Verstanden</button>
+    </div>
+  </div>`;
 }
 
 function footer() {
@@ -398,8 +436,11 @@ function footer() {
           <p class="muted" style="margin:0;color:rgba(255,255,255,.86)">Sichere dir neue Paket-Angebote und Rabattaktionen direkt per E-Mail.</p>
         </div>
         <form class="field" data-newsletter>
-          <input class="input" type="email" required placeholder="deine@email.de">
+          <input class="input" type="email" name="email" required placeholder="deine@email.de">
+          <input class="input" type="text" name="website" tabindex="-1" autocomplete="off" style="display:none">
+          <label class="newsletter-consent"><input type="checkbox" name="consent" value="1" required> Ich möchte Paket-Angebote und Rabattaktionen per E-Mail erhalten.</label>
           <button class="btn btn-primary" type="submit">Rabatt sichern</button>
+          <div class="form-status" data-form-status role="status"></div>
         </form>
       </div>
       <div class="footer-grid" style="margin-top:42px">
@@ -411,7 +452,7 @@ function footer() {
         <div><h3 class="footer-platform-heading">${platformLogo("Instagram", true)}</h3><ul><li><a href="/instagram-follower-kaufen/">Instagram Follower kaufen</a></li><li><a href="/instagram-likes-kaufen/">Instagram Likes kaufen</a></li><li><a href="/instagram-views-kaufen/">Instagram Views kaufen</a></li><li><a href="/instagram/">Instagram Kommentare kaufen</a></li></ul></div>
         <div><h3 class="footer-platform-heading">${platformLogo("TikTok")} ${platformLogo("YouTube")}<span>TikTok & YouTube</span></h3><ul><li><a href="/tiktok-follower-kaufen/">TikTok Follower kaufen</a></li><li><a href="/tiktok-likes-kaufen/">TikTok Likes kaufen</a></li><li><a href="/tiktok-views-kaufen/">TikTok Views kaufen</a></li><li><a href="/youtube-abonnenten-kaufen/">YouTube Abonnenten kaufen</a></li><li><a href="/youtube-views-kaufen/">YouTube Views kaufen</a></li></ul></div>
         <div><h3>Service</h3><ul><li><a href="/faq/">FAQ</a></li><li><a href="/kontakt/">Kontakt</a></li><li><a href="/zahlungsarten/">Zahlungsarten</a></li><li><a href="/lieferbedingungen/">Lieferbedingungen</a></li><li><a href="/refill-anfrage/">Refill-Anfrage</a></li></ul></div>
-        <div><h3>Rechtliches</h3><ul><li><a href="/impressum/">Impressum</a></li><li><a href="/datenschutz/">Datenschutz</a></li><li><a href="/agb/">AGB</a></li><li><a href="/widerrufsbelehrung/">Widerrufsbelehrung</a></li></ul></div>
+        <div><h3>Rechtliches</h3><ul><li><a href="/impressum/">Impressum</a></li><li><a href="/datenschutz/">Datenschutz</a></li><li><a href="/cookie-hinweise/">Cookie-Hinweise</a></li><li><a href="/agb/">AGB</a></li><li><a href="/widerrufsbelehrung/">Widerrufsbelehrung</a></li></ul></div>
       </div>
       <div class="footer-bottom">
         <span>© 2026 FameBoost.de. Alle Rechte vorbehalten.</span>
@@ -443,12 +484,7 @@ function home() {
     ${categoryOverview()}
     ${stepsSection()}
     ${trustSection()}
-    <section class="section" id="bewertungen"><div class="container">
-      <div class="content-block reveal">
-        <h2>Kundenfeedback</h2>
-        <p class="muted">Kundenbewertungen werden hier angezeigt, sobald verifizierte Bewertungen vorliegen. Es werden keine Platzhalterstimmen als echte Bewertungen ausgegeben.</p>
-      </div>
-    </div></section>
+    ${customerFeedbackSection()}
     <section class="section"><div class="container grid cards-3">
       ${infoCard("Mehr Sichtbarkeit für dein Profil", "Ein professioneller erster Eindruck kann entscheiden, ob neue Besucher deinem Profil vertrauen, deine Inhalte anschauen oder weiterklicken. Mit FameBoost.de kannst du gezielt Pakete auswählen, die zu deinem Profil und deiner Plattform passen.")}
       ${infoCard("Einfacher Ablauf", "Du brauchst keine technischen Kenntnisse. Wähle die Plattform, entscheide dich für eine Menge und gib deinen Profilnamen oder Link ein. Danach kannst du deine Bestellung sicher bezahlen.")}
@@ -528,6 +564,35 @@ function trustSection() {
   return `<section class="section section-dark"><div class="container"><div class="section-head reveal"><h2>Warum FameBoost.de?</h2><p>Premium-Gefühl, klare Prozesse und vorsichtige, belegbare Aussagen statt lauter Versprechen.</p></div><div class="grid cards-3">${items.map((x) => `<div class="card trust-card reveal"><div class="icon-box">${x[0].slice(0, 1)}</div><h3>${x[0]}</h3><p class="muted">${x[1]}</p></div>`).join("")}</div></div></section>`;
 }
 
+function customerFeedbackSection() {
+  const placeholders = [
+    ["Anonym", "Verifizierte Bewertung folgt", "Hier erscheint eine echte Kundenbewertung, sobald sie geprüft und freigegeben wurde."],
+    ["Anonym", "Noch kein öffentliches Feedback", "Wir zeigen an dieser Stelle nur echte Rückmeldungen aus nachvollziehbaren Bestellungen."],
+    ["Anonym", "Bewertung wird vorbereitet", "Sobald verifizierte Bewertungen vorliegen, werden sie hier transparent eingebunden."]
+  ];
+  return `<section class="section review-section" id="bewertungen"><div class="container">
+    <div class="review-head reveal">
+      <div>
+        <span class="eyebrow">Kundenfeedback</span>
+        <h2>Bewertungen von FameBoost.de</h2>
+        <p>Kundenbewertungen werden hier angezeigt, sobald verifizierte Bewertungen vorliegen. Es werden keine erfundenen Stimmen als echte Bewertungen ausgegeben.</p>
+      </div>
+      <div class="review-summary" aria-label="Noch keine verifizierte Gesamtbewertung">
+        <strong>Neu</strong>
+        <span>Verifizierte Bewertungen folgen</span>
+      </div>
+    </div>
+    <div class="review-grid">
+      ${placeholders.map((review) => `<article class="review-card reveal">
+        <div class="review-rating pending" aria-label="Noch keine verifizierte Sternebewertung"><span></span><span></span><span></span><span></span><span></span></div>
+        <h3>${review[1]}</h3>
+        <p>${review[2]}</p>
+        <div class="review-footer"><strong>${review[0]}</strong><span>Noch nicht veröffentlicht</span></div>
+      </article>`).join("")}
+    </div>
+  </div></section>`;
+}
+
 function infoCard(title, text) {
   return `<div class="card reveal"><h3>${title}</h3><p class="muted">${text}</p></div>`;
 }
@@ -579,14 +644,10 @@ function quickProductInfo(number, title, text) {
 
 function configurator(slug, product) {
   const first = product.quantities[0];
-  const maxQuantity = productMaxQuantity(slug, product);
   return `<form class="configurator product-buy-box reveal" style="${platformStyle(product.platform)}" data-configurator data-slug="${slug}">
     <div class="config-head">${platformLogo(product.platform)}<div><span>Direkt bestellen</span><h2>Paket konfigurieren</h2></div></div>
-    <div class="field"><label>Wähle deine ${product.type}</label><div class="option-grid" data-qty-options>${product.quantities.map((q, i) => `<button class="option ${i === 0 ? "active" : ""}" type="button" data-qty="${q[0]}"><strong>${amountLabel(q[0])}</strong><small>${eur(q[1])}</small></button>`).join("")}<button class="option" type="button" data-custom><strong>Eigene</strong><small>Menge</small></button></div></div>
-    <div class="field" data-custom-row style="display:none"><label>Eigene Menge</label><input class="input" type="number" min="50" max="${maxQuantity}" step="50" data-custom-qty placeholder="z. B. 1500"><small class="limit-hint" data-limit-hint>${productLimitHint(slug, product)}</small></div>
+    <div class="field"><label>Wähle deine ${product.type}</label><div class="option-grid" data-qty-options>${product.quantities.map((q, i) => `<button class="option ${i === 0 ? "active" : ""}" type="button" data-qty="${q[0]}"><strong>${amountLabel(q[0])}</strong><small>${packageValueLabel(product, q[0], q[1], i)}</small></button>`).join("")}</div></div>
     <div class="field"><label>Wie lautet dein Profilname oder Link?</label><input class="input" required name="profile" placeholder="z. B. @deinprofil oder Profil-Link"><small>Bitte stelle sicher, dass dein Profil öffentlich erreichbar ist, damit die Bestellung korrekt verarbeitet werden kann.</small></div>
-    <div class="field"><label>Liefergeschwindigkeit</label><select class="select" name="speed"><option value="Standard" data-price="0">Standard</option><option value="Schnellere Bearbeitung" data-price="3.99">Schnellere Bearbeitung (+3,99 €)</option><option value="Individuelle Geschwindigkeit" data-price="3.99">Individuelle Geschwindigkeit (+3,99 €)</option></select></div>
-    <div class="field"><label>Refill-Option</label><select class="select" name="refill"><option value="Ohne Refill" data-price="0">Ohne Refill</option><option value="30 Tage Refill-Schutz" data-price="4.99">30 Tage Refill-Schutz (+4,99 €)</option><option value="60 Tage Refill-Schutz" data-price="7.99">60 Tage Refill-Schutz (+7,99 €)</option></select><small>Mit Refill-Schutz kannst du bei ausgewählten Paketen eine Nachfüllung beantragen, falls innerhalb des Schutzzeitraums ein Teil der gelieferten Menge sinkt.</small></div>
     <div class="price-box"><span>Gesamtpreis</span><strong data-total>${eur(first[1])}</strong></div>
     <button class="btn btn-primary" style="width:100%" type="submit">In den Warenkorb</button>
     <div class="form-status config-status" data-config-status role="status"></div>
@@ -634,7 +695,7 @@ function cartPage() {
 }
 
 function cartItem(item, index) {
-  return `<div class="cart-item"><div><h3>${item.title}</h3><div class="line-meta"><span>${item.platform}</span><span>${amountLabel(item.quantity)} ${item.type}</span><span>${item.profile}</span><span>${item.speed}</span><span>${item.refill}</span></div></div><div style="text-align:right"><strong>${eur(item.price)}</strong><br><button class="remove" data-remove="${index}">Entfernen</button></div></div>`;
+  return `<div class="cart-item"><div><h3>${item.title}</h3><div class="line-meta"><span>${item.platform}</span><span>${amountLabel(item.quantity)} ${item.type}</span><span>${item.profile}</span></div></div><div style="text-align:right"><strong>${eur(item.price)}</strong><br><button class="remove" data-remove="${index}">Entfernen</button></div></div>`;
 }
 
 function summaryBox(target, label) {
@@ -652,8 +713,7 @@ function checkoutPage() {
     return `<section class="section"><div class="container"><div class="content-block reveal"><h1 style="color:var(--ink);font-size:46px">Ein Produkt pro Zahlung</h1><p class="muted">Aktuell sind deine Stripe-Zahlungslinks pro Paket einzeln angelegt. Bitte entferne alle bis auf ein Produkt und kaufe die Pakete nacheinander, damit jedes Paket korrekt zugeordnet wird.</p><a class="btn btn-primary" href="/warenkorb/">Zurück zum Warenkorb</a></div></div></section>`;
   }
   const item = cart[0];
-  const optionNotice = item.speed !== "Standard" || item.refill !== "Ohne Refill" ? `<div class="notice">Schnellere Bearbeitung und Refill-Optionen sind in Phase 1 noch nicht über die Stripe Payment Links abgerechnet. Bitte wähle auf der Produktseite vorerst Standard und Ohne Refill.</div>` : "";
-  return `<section class="section"><div class="container"><div class="section-head reveal"><h1 style="color:var(--ink);font-size:48px">Sichere Kasse</h1><p>Deine Bestellung wird vorbereitet. Danach wirst du zur sicheren Stripe-Zahlungsseite weitergeleitet.</p></div><div class="split"><form class="content-block reveal" data-checkout>${optionNotice}<div class="form-grid"><div class="field"><label>Vorname</label><input class="input" name="firstName" required autocomplete="given-name"></div><div class="field"><label>Nachname</label><input class="input" name="lastName" required autocomplete="family-name"></div><div class="field full"><label>E-Mail-Adresse</label><input class="input" type="email" name="email" required autocomplete="email"></div><div class="field full"><label>Rechnungsadresse</label><input class="input" name="address" required autocomplete="street-address"></div><div class="field full"><label>Zahlungsart</label><input class="input" value="Stripe Zahlungsseite: PayPal, Karte, Apple Pay, Google Pay und weitere aktivierte Methoden" disabled><small>Der Rabattcode wird später direkt auf der Stripe-Zahlungsseite eingegeben.</small></div><label class="field full"><span><input type="checkbox" required> Ich akzeptiere die AGB.</span></label><label class="field full"><span><input type="checkbox" required> Ich habe die Datenschutzhinweise gelesen.</span></label></div><button class="btn btn-primary" type="submit" style="width:100%">Weiter zur sicheren Zahlung</button><div class="form-status" data-form-status role="status"></div></form><aside>${summaryBox("#", "Bestellung vorbereiten")}<div class="checkout-box reveal" style="margin-top:18px"><h3>Trust-Box</h3><ul><li>Sichere Stripe-Zahlungsseite</li><li>Kein Passwort erforderlich</li><li>Einmalzahlung ohne Abo</li><li>Support bei Fragen</li><li>Manuelle Prüfung nach Zahlung in Phase 1</li></ul></div></aside></div></div></section>`;
+  return `<section class="section"><div class="container"><div class="section-head reveal"><h1 style="color:var(--ink);font-size:48px">Sichere Kasse</h1><p>Deine Bestellung wird vorbereitet. Danach wirst du zur sicheren Stripe-Zahlungsseite weitergeleitet.</p></div><div class="split"><form class="content-block reveal" data-checkout><div class="form-grid"><div class="field"><label>Vorname</label><input class="input" name="firstName" required autocomplete="given-name"></div><div class="field"><label>Nachname</label><input class="input" name="lastName" required autocomplete="family-name"></div><div class="field full"><label>E-Mail-Adresse</label><input class="input" type="email" name="email" required autocomplete="email"></div><div class="field full"><label>Rechnungsadresse</label><input class="input" name="address" required autocomplete="street-address"></div><div class="field full"><label>Zahlungsart</label><input class="input" value="Stripe Zahlungsseite: PayPal, Karte, Apple Pay, Google Pay und weitere aktivierte Methoden" disabled><small>Der Rabattcode wird später direkt auf der Stripe-Zahlungsseite eingegeben.</small></div><label class="field full"><span><input type="checkbox" required> Ich akzeptiere die AGB.</span></label><label class="field full"><span><input type="checkbox" required> Ich habe die Datenschutzhinweise gelesen.</span></label></div><button class="btn btn-primary" type="submit" style="width:100%">Weiter zur sicheren Zahlung</button><div class="form-status" data-form-status role="status"></div></form><aside>${summaryBox("#", "Bestellung vorbereiten")}<div class="checkout-box reveal" style="margin-top:18px"><h3>Trust-Box</h3><ul><li>Sichere Stripe-Zahlungsseite</li><li>Kein Passwort erforderlich</li><li>Einmalzahlung ohne Abo</li><li>Support bei Fragen</li><li>Manuelle Prüfung nach Zahlung in Phase 1</li></ul></div></aside></div></div></section>`;
 }
 
 function faqPage() {
@@ -674,8 +734,7 @@ function categoryPage(platform) {
 function agbPage() {
   return `<section class="product-hero"><div class="container"><h1>Allgemeine Geschäftsbedingungen</h1><p class="lead">AGB-Entwurf für FameBoost.de. Die finale Live-Version muss rechtlich geprüft und mit den vollständigen Betreiberangaben ergänzt werden.</p></div></section>
   <section class="section"><div class="container"><article class="content-block legal-doc reveal">
-    <div class="notice">Wichtig: Diese AGB sind ein eigenständiger Entwurf für die Website-Struktur. Vor Veröffentlichung müssen sie durch einen Anwalt oder einen spezialisierten Rechtstext-Anbieter geprüft und an Betreiber, Zahlungsanbieter, Widerrufsprozess, Steuerangaben und reale Lieferbedingungen angepasst werden.</div>
-    <p><strong>Stand:</strong> [Datum einsetzen]</p>
+    <p><strong>Stand:</strong> 11.06.2026</p>
     <h2>1. Anbieter und Geltungsbereich</h2>
     <p>Diese Allgemeinen Geschäftsbedingungen gelten für alle Bestellungen über FameBoost.de. Vertragspartner ist der im Impressum genannte Betreiber. Abweichende Bedingungen von Kunden gelten nur, wenn sie ausdrücklich schriftlich bestätigt wurden.</p>
     <h2>2. Leistungsbeschreibung</h2>
@@ -713,12 +772,143 @@ function agbPage() {
 
 function legalPage(title) {
   if (title === "AGB") return agbPage();
+  if (title === "Impressum") return impressumPage();
+  if (title === "Datenschutz") return datenschutzPage();
+  if (title === "Cookie-Hinweise") return cookiePage();
+  if (title === "Widerrufsbelehrung") return widerrufPage();
   const trademarkNotice = title === "Impressum" ? `<div class="notice trademark-notice"><strong>Marken- und Logohinweis:</strong> Instagram, TikTok, YouTube, Twitch, Facebook sowie die dazugehörigen Logos und Markenkennzeichen sind Marken beziehungsweise geschützte Kennzeichen der jeweiligen Rechteinhaber. Die Darstellung auf fameboost.de dient ausschließlich der eindeutigen Plattform-Zuordnung im Shop. FameBoost.de steht in keiner Verbindung zu Meta, ByteDance, Google, Twitch oder anderen Plattformbetreibern und ist kein offizieller Partner dieser Unternehmen.</div>` : "";
   return `<section class="product-hero"><div class="container"><h1>${title}</h1><p class="lead">Platzhalterseite für die rechtliche Live-Version von fameboost.de.</p></div></section><section class="section"><div class="container"><div class="content-block reveal"><div class="notice">Wichtig: Die finalen Rechtstexte müssen von einem Anwalt oder einem spezialisierten Generator wie Händlerbund, eRecht24, IT-Recht Kanzlei oder Trusted Shops erstellt und geprüft werden.</div>${trademarkNotice}<h2 style="margin-top:24px">${title}</h2><p>Dieser Bereich ist als struktureller Platzhalter vorbereitet. Vor dem Livegang müssen Anbieterinformationen, gesetzliche Pflichtangaben, Widerrufsregeln, Zahlungsbedingungen, Lieferbedingungen, Datenschutzprozesse und Cookie-Hinweise vollständig ergänzt und geprüft werden.</p><p>Es werden keine unbelegten Garantien, keine fremden Bewertungen und keine Aussagen zu offiziellen Plattformpartnerschaften verwendet.</p></div></div></section>`;
 }
 
+function datenschutzPage() {
+  return `<section class="product-hero"><div class="container"><h1>Datenschutzerklärung</h1><p class="lead">Datenschutzhinweise für FameBoost.de auf Basis der aktuell eingebauten Funktionen.</p></div></section>
+  <section class="section"><div class="container"><article class="content-block legal-doc reveal">
+    <p><strong>Stand:</strong> 11.06.2026</p>
+    <div class="notice">Diese Datenschutzerklärung muss vor dem Livegang final rechtlich geprüft und an die tatsächlich genutzten Dienstleister angepasst werden.</div>
+    <h2>1. Verantwortlicher</h2>
+    <p>Oiven Games GmbH, Elmeloher Straße 17a, 27777 Ganderkesee, Deutschland. E-Mail: <a href="mailto:nevio@oivengames.com">nevio@oivengames.com</a>.</p>
+    <h2>2. Hosting und Server-Logs</h2>
+    <p>Die Website wird über ein cPanel-Hosting betrieben. Beim Aufruf werden technisch notwendige Zugriffsdaten wie IP-Adresse, Zeitpunkt, angeforderte URL, Browserinformationen und Statuscodes verarbeitet, um die Website auszuliefern und Missbrauch zu erkennen.</p>
+    <h2>3. Bestellungen</h2>
+    <p>Für Bestellungen verarbeiten wir Name, E-Mail-Adresse, Rechnungsadresse, Produkt, Menge, Profilname oder Link, interne Order-ID, Zahlungsstatus, Bestellstatus und technische Statusdaten. Diese Daten werden zur Vertragsabwicklung, Zahlungszuordnung, Supportbearbeitung und Betrugsprävention benötigt.</p>
+    <h2>4. Zahlungsabwicklung über Stripe</h2>
+    <p>Die Zahlung erfolgt über Stripe Payment Links beziehungsweise Stripe Checkout. Zahlungsdaten werden direkt bei Stripe verarbeitet. FameBoost.de speichert den Zahlungsstatus, die Zuordnung zur Bestellung und technische Webhook-Daten.</p>
+    <h2>5. Reseller-Panel</h2>
+    <p>Nach bestätigter Zahlung können produktbezogene Daten wie Service-ID, Menge und Profilname oder Link an das angebundene Reseller-Panel übermittelt werden, sofern die Bestellung nicht manuell gehalten wird.</p>
+    <h2>6. Kontaktformular und Refill-Anfragen</h2>
+    <p>Bei Kontakt- und Refill-Formularen verarbeiten wir die eingegebenen Angaben, um die Anfrage zu beantworten. Zusätzlich kann eine automatische Eingangsbestätigung per E-Mail versendet werden.</p>
+    <h2>7. Newsletter</h2>
+    <p>Wenn du dich aktiv anmeldest, speichern wir deine E-Mail-Adresse, Zeitpunkt und Einwilligung. Vor regelmäßigem Newsletter-Versand sollten Double-Opt-In und Abmeldelink final umgesetzt oder rechtlich geprüft werden.</p>
+    <h2>8. Cookies und lokale Speicherung</h2>
+    <p>Aktuell nutzt die Website technisch notwendige lokale Speicherung für Warenkorb, Bestellstatus, Cookie-Hinweis und Admin-Sitzung. Tracking- oder Marketing-Cookies sind aktuell nicht aktiv.</p>
+    <h2>9. Speicherdauer und Rechte</h2>
+    <p>Daten werden nur so lange gespeichert, wie sie für den jeweiligen Zweck, gesetzliche Pflichten, Support oder Missbrauchsabwehr erforderlich sind. Betroffene Personen haben je nach Voraussetzung Rechte auf Auskunft, Berichtigung, Löschung, Einschränkung, Widerspruch und Datenübertragbarkeit.</p>
+  </article></div></section>`;
+}
+
+function cookiePage() {
+  return `<section class="product-hero"><div class="container"><h1>Cookie-Hinweise</h1><p class="lead">Transparenz zu technisch notwendigen Funktionen auf FameBoost.de.</p></div></section>
+  <section class="section"><div class="container"><article class="content-block legal-doc reveal">
+    <p><strong>Stand:</strong> 11.06.2026</p>
+    <h2>Aktueller Stand</h2>
+    <p>FameBoost.de nutzt aktuell keine Analytics- oder Marketing-Cookies. Der Cookie-Hinweis dient als Transparenzhinweis für technisch notwendige Funktionen.</p>
+    <h2>Technisch notwendige Speicherung</h2>
+    <p>Der Warenkorb, der letzte Bestellstatus, die Bestätigung des Cookie-Hinweises und die Admin-Sitzung können lokal beziehungsweise serverseitig gespeichert werden, damit die Website funktioniert.</p>
+    <h2>Spätere Erweiterungen</h2>
+    <p>Wenn später Analytics, Pixel oder Marketingdienste eingebunden werden, muss vor dem Laden dieser Dienste ein echter Consent-Banner mit Auswahlmöglichkeiten, Ablehnen-Funktion und Widerrufsmöglichkeit eingebaut werden.</p>
+  </article></div></section>`;
+}
+
+function widerrufPage() {
+  return `<section class="product-hero"><div class="container"><h1>Widerrufsbelehrung</h1><p class="lead">Widerrufsinformationen für digitale Leistungen auf FameBoost.de.</p></div></section>
+  <section class="section"><div class="container"><article class="content-block legal-doc reveal">
+    <p><strong>Stand:</strong> 11.06.2026</p>
+    <p>Die Oiven Games GmbH, im Folgenden als FameBoost.de bezeichnet, legt die nachfolgende Widerrufsbelehrung für die Nutzung der auf dieser Plattform angebotenen Dienstleistungen fest.</p>
+    <p>Ihr Widerrufsrecht kann gemäß den gesetzlichen Regelungen für digitale Dienstleistungen mit dem Beginn der Ausführung des Auftrags erlöschen, wenn Sie ausdrücklich zugestimmt haben, dass wir mit der Ausführung des Vertrags vor Ablauf der Widerrufsfrist beginnen, und Sie Ihre Kenntnis vom möglichen Erlöschen des Widerrufsrechts bestätigt haben.</p>
+    <p>Eine Bestellung kann nur widerrufen werden, wenn die Durchführung des Auftrags noch nicht begonnen hat und der Auftrag sich noch nicht im internen Verarbeitungssystem befindet.</p>
+    <h2>Muster-Widerrufsformular</h2>
+    <div class="withdrawal-form">
+      <p>An Oiven Games GmbH<br>[Anschrift der Oiven Games GmbH ergänzen]<br>E-Mail: nevio@oivengames.com</p>
+      <p>Hiermit widerrufe(n) ich/wir den von mir/uns abgeschlossenen Vertrag über den Kauf der folgenden Dienstleistung:</p>
+      <p>Bestellt am:</p>
+      <p>Name des/der Verbraucher(s):</p>
+      <p>Anschrift des/der Verbraucher(s):</p>
+      <p>Bestellnummer, falls vorhanden:</p>
+      <p>Datum:</p>
+    </div>
+  </article></div></section>`;
+}
+
+function impressumPage() {
+  return `<section class="product-hero"><div class="container"><h1>Impressum</h1><p class="lead">Anbieterkennzeichnung gemäß § 5 DDG und § 35a GmbHG.</p></div></section>
+  <section class="section"><div class="container"><article class="content-block legal-doc reveal">
+    <p><strong>Stand des Impressums:</strong> 11.06.2026</p>
+
+    <h2>Impressum / Anbieterkennzeichnung</h2>
+    <div class="imprint-address-card">
+      <img class="imprint-address-image" src="/assets/img/imprint.png" alt="Oiven Games GmbH, Elmeloher Straße 17a, 27777 Ganderkesee, Deutschland" loading="lazy">
+    </div>
+    <p>E-Mail: <a href="mailto:nevio@oivengames.com">nevio@oivengames.com</a></p>
+
+    <h2>Vertreten durch</h2>
+    <p>Geschäftsführer: Nevio Alexander Vogt</p>
+
+    <h2>Sitz der Gesellschaft</h2>
+    <p>Ganderkesee, Deutschland</p>
+
+    <h2>Registereintrag</h2>
+    <p>Registergericht: Amtsgericht Oldenburg<br>
+    Handelsregister: HRB 222916</p>
+
+    <h2>Umsatzsteuer-Identifikationsnummer</h2>
+    <p>Umsatzsteuer-Identifikationsnummer gemäß § 27a UStG:<br>
+    DE458833644</p>
+
+    <div class="notice trademark-notice"><strong>Marken- und Logohinweis:</strong> Instagram, TikTok, YouTube, Twitch, Facebook sowie die dazugehörigen Logos und Markenkennzeichen sind Marken beziehungsweise geschützte Kennzeichen der jeweiligen Rechteinhaber. Die Darstellung auf fameboost.de dient ausschließlich der eindeutigen Plattform-Zuordnung im Shop. FameBoost.de steht in keiner Verbindung zu Meta, ByteDance, Google, Twitch oder anderen Plattformbetreibern und ist kein offizieller Partner dieser Unternehmen.</div>
+  </article></div></section>`;
+}
+
+function adminMailTestBlock() {
+  return `<div class="content-block reveal"><div class="admin-toolbar"><div><h2>E-Mail-Test</h2><p class="muted">Sende eine kurze Testmail, um den Mailversand auf dem Server zu prüfen.</p></div></div><form class="admin-test-mail" data-admin-test-mail><input class="input" type="email" name="email" placeholder="test@example.com" required><button class="btn btn-primary" type="submit">Testmail senden</button><div class="form-status" data-form-status role="status"></div></form></div>`;
+}
+
 function adminPage() {
-  return `<section class="product-hero"><div class="container"><h1>Admin</h1><p class="lead">Backend-Übersicht für Bestellungen, Zahlungsprüfung, Reseller-Mapping, Status, Refill und Zählerstände. Aktuell ohne Login, vor Production absichern.</p></div></section><section class="section"><div class="container"><div class="content-block reveal"><div class="admin-toolbar"><div><h2>Bestellungen</h2><p class="muted">Phase 1: Zahlung wird über Stripe Payment Links geprüft. Bei niedriger Reseller-Balance werden bezahlte Bestellungen automatisch pausiert.</p></div><div class="admin-actions"><button class="btn btn-light" type="button" data-release-holds>Alle Holds freigeben</button><button class="btn btn-light" type="button" data-admin-refresh>Aktualisieren</button></div></div><div data-admin-orders><div class="notice">Bestellungen werden geladen...</div></div></div><div class="content-block reveal"><div class="admin-toolbar"><div><h2>Reseller-Service-Mapping</h2><p class="muted">Suche Services aus dem Reseller-Panel und ordne sie unseren Produkten zu. Gespeichert wird nur die Service-ID und Metadaten, nicht dein API-Key.</p></div><button class="btn btn-light" type="button" data-services-refresh>Services neu laden</button></div><div data-reseller-health><div class="notice">Service-Verfügbarkeit wird geprüft...</div></div><div data-service-mapping><div class="notice">Services werden geladen...</div></div></div></div></section>`;
+  if (adminAuthState.loading || !adminAuthState.loaded) {
+    return `<section class="product-hero"><div class="container"><h1>Admin</h1><p class="lead">Admin-Status wird geprüft...</p></div></section><section class="section"><div class="container"><div class="content-block admin-auth-card reveal"><div class="notice">Admin-Login wird geladen...</div></div></div></section>`;
+  }
+  if (adminAuthState.setup_required) {
+    if (adminAuthState.setup?.otpauth_uri) {
+      return `<section class="product-hero"><div class="container"><h1>Admin einrichten</h1><p class="lead">Scanne den QR-Code mit Google Authenticator und bestätige den 6-stelligen Code.</p></div></section><section class="section"><div class="container"><div class="content-block admin-auth-card reveal"><div class="admin-qr-box"><div data-admin-qr data-qr="${adminAuthState.setup.otpauth_uri}"></div><div class="notice">Falls der QR-Code nicht scanbar ist, nutze den Secret Key: <code>${adminAuthState.setup.secret}</code></div></div><form class="form-grid" data-admin-setup-verify><div class="field full"><label>Google-Authenticator-Code</label><input class="input" name="code" inputmode="numeric" autocomplete="one-time-code" required></div><button class="btn btn-primary" type="submit">Einrichtung abschließen</button><div class="form-status full" data-form-status role="status"></div></form></div></div></section>`;
+    }
+    return `<section class="product-hero"><div class="container"><h1>Admin einrichten</h1><p class="lead">Lege den ersten Admin-Zugang mit Passwort und Google Authenticator an.</p></div></section><section class="section"><div class="container"><form class="content-block admin-auth-card reveal" data-admin-setup-start><div class="form-grid"><div class="field"><label>Benutzername</label><input class="input" name="username" required autocomplete="username"></div><div class="field"><label>Passwort</label><input class="input" name="password" type="password" minlength="12" required autocomplete="new-password"></div></div><button class="btn btn-primary" type="submit">QR-Code erzeugen</button><div class="form-status" data-form-status role="status"></div></form></div></section>`;
+  }
+  if (!adminAuthState.authenticated) {
+    return `<section class="product-hero"><div class="container"><h1>Admin Login</h1><p class="lead">Melde dich mit Benutzername, Passwort und Google-Authenticator-Code an.</p></div></section><section class="section"><div class="container"><form class="content-block admin-auth-card reveal" data-admin-login><div class="form-grid"><div class="field"><label>Benutzername</label><input class="input" name="username" required autocomplete="username"></div><div class="field"><label>Passwort</label><input class="input" name="password" type="password" required autocomplete="current-password"></div><div class="field full"><label>Google-Authenticator-Code</label><input class="input" name="code" inputmode="numeric" required autocomplete="one-time-code"></div></div><button class="btn btn-primary" type="submit">Einloggen</button><div class="form-status" data-form-status role="status"></div></form></div></section>`;
+  }
+  return `<section class="product-hero"><div class="container"><h1>Admin</h1><p class="lead">Backend-Übersicht für Bestellungen, Zahlungsprüfung, Reseller-Mapping, Status, Refill und Zählerstände.</p><button class="btn btn-light" type="button" data-admin-logout>Logout</button></div></section><section class="section"><div class="container"><div class="content-block reveal"><div class="admin-toolbar"><div><h2>Bestellungen</h2><p class="muted">Phase 1: Zahlung wird über Stripe Payment Links geprüft. Bei niedriger Reseller-Balance werden bezahlte Bestellungen automatisch pausiert.</p></div><div class="admin-actions"><button class="btn btn-light" type="button" data-release-holds>Alle Holds freigeben</button><button class="btn btn-light" type="button" data-admin-refresh>Aktualisieren</button></div></div><div data-admin-orders><div class="notice">Bestellungen werden geladen...</div></div></div><div class="content-block reveal"><div class="admin-toolbar"><div><h2>Reseller-Service-Mapping</h2><p class="muted">Suche Services aus dem Reseller-Panel und ordne sie unseren Produkten zu. Gespeichert wird nur die Service-ID und Metadaten, nicht dein API-Key.</p></div><button class="btn btn-light" type="button" data-services-refresh>Services neu laden</button></div><div data-reseller-health><div class="notice">Service-Verfügbarkeit wird geprüft...</div></div><div data-service-mapping><div class="notice">Services werden geladen...</div></div></div>${adminMailTestBlock()}</div></section>`;
+}
+
+async function loadAdminAuth(force = false) {
+  if (adminAuthState.loading || (adminAuthState.loaded && !force)) return;
+  adminAuthState.loading = true;
+  try {
+    const data = await apiJson("/api/admin-auth.php?action=state");
+    adminAuthState = { loaded: true, loading: false, authenticated: !!data.authenticated, setup_required: !!data.setup_required, username: data.username || "", setup: adminAuthState.setup };
+  } catch {
+    adminAuthState = { loaded: true, loading: false, authenticated: false, setup_required: false, username: "", setup: null };
+  }
+  route();
+}
+
+function renderAdminQrCode() {
+  const node = document.querySelector("[data-admin-qr]");
+  if (!node || node.dataset.rendered === "1") return;
+  node.dataset.rendered = "1";
+  if (window.QRCode?.toCanvas) {
+    window.QRCode.toCanvas(node, node.dataset.qr, { width: 224, margin: 1 });
+  } else {
+    node.innerHTML = `<a href="${node.dataset.qr}">Authenticator öffnen</a>`;
+  }
 }
 
 async function apiJson(url, options = {}) {
@@ -1101,6 +1291,11 @@ function bindEvents() {
       navigator.clipboard?.writeText(coupon.dataset.copyCoupon);
       coupon.textContent = "Kopiert";
     }
+    const cookieOk = event.target.closest("[data-cookie-ok]");
+    if (cookieOk) {
+      localStorage.setItem("fb_cookie_notice_ok", "1");
+      document.getElementById("cookie-notice")?.remove();
+    }
     const remove = event.target.closest("[data-remove]");
     if (remove) {
       const cart = getCart();
@@ -1185,10 +1380,32 @@ function bindEvents() {
         body: JSON.stringify({ order_number: adminAction.dataset.order, action: adminAction.dataset.adminAction })
       }).then(loadAdminOrders).catch((error) => alert(error.message));
     }
+    const adminLogout = event.target.closest("[data-admin-logout]");
+    if (adminLogout) {
+      apiJson("/api/admin-auth.php", {
+        method: "POST",
+        body: JSON.stringify({ action: "logout" })
+      }).then(() => {
+        adminAuthState = { loaded: false, loading: false, authenticated: false, setup_required: false, username: "", setup: null };
+        route();
+      }).catch((error) => alert(error.message));
+    }
   });
 
   document.addEventListener("submit", (event) => {
     const form = event.target;
+    if (form.matches("[data-admin-setup-start]")) {
+      event.preventDefault();
+      submitAdminSetupStart(form);
+    }
+    if (form.matches("[data-admin-setup-verify]")) {
+      event.preventDefault();
+      submitAdminSetupVerify(form);
+    }
+    if (form.matches("[data-admin-login]")) {
+      event.preventDefault();
+      submitAdminLogin(form);
+    }
     if (form.matches("[data-configurator]")) {
       event.preventDefault();
       const slug = form.dataset.slug;
@@ -1196,10 +1413,8 @@ function bindEvents() {
       if (!validateConfigurator(form, { showEmpty: true })) return;
       const qty = selectedConfiguratorQuantity(form, product);
       const base = priceFor(product, qty);
-      const speed = form.speed;
-      const refill = form.refill;
-      const price = base + Number(speed.selectedOptions[0].dataset.price) + Number(refill.selectedOptions[0].dataset.price);
-      setCart([...getCart(), { slug, title: product.title, platform: product.platform, type: product.type, quantity: qty, profile: form.profile.value, speed: speed.value, refill: refill.value, price }]);
+      const price = base;
+      setCart([...getCart(), { slug, title: product.title, platform: product.platform, type: product.type, quantity: qty, profile: form.profile.value, speed: "Standard", refill: "Ohne Refill", price }]);
       location.href = "/warenkorb/";
     }
     if (form.matches("[data-checkout]")) {
@@ -1209,6 +1424,14 @@ function bindEvents() {
     if (form.matches("[data-contact-form]")) {
       event.preventDefault();
       submitContactForm(form);
+    }
+    if (form.matches("[data-admin-test-mail]")) {
+      event.preventDefault();
+      submitAdminTestMail(form);
+    }
+    if (form.matches("[data-newsletter]")) {
+      event.preventDefault();
+      submitNewsletterForm(form);
     }
     if (form.matches("[data-feedback-form]")) {
       event.preventDefault();
@@ -1232,7 +1455,7 @@ function bindEvents() {
         body: JSON.stringify(payload)
       }).then(loadAdminOrders).catch((error) => alert(error.message));
     }
-    if (form.matches("[data-generic-form], [data-newsletter]")) {
+    if (form.matches("[data-generic-form]")) {
       event.preventDefault();
       form.innerHTML = `<div class="notice">Danke, deine Anfrage wurde lokal vorgemerkt. Im Livebetrieb wird dieses Formular an ein Postfach oder CRM angebunden.</div>`;
     }
@@ -1281,9 +1504,136 @@ function bindEvents() {
     const form = option.closest("[data-configurator]");
     form.querySelectorAll(".option").forEach((node) => node.classList.remove("active"));
     option.classList.add("active");
-    form.querySelector("[data-custom-row]").style.display = option.matches("[data-custom]") ? "grid" : "none";
+    const customRow = form.querySelector("[data-custom-row]");
+    if (customRow) customRow.style.display = option.matches("[data-custom]") ? "grid" : "none";
     updateConfigurator(form);
   });
+}
+
+function setFormBusy(form, busy, text = "") {
+  const button = form.querySelector("button[type='submit']");
+  if (!button) return;
+  if (busy) {
+    button.dataset.originalText = button.textContent;
+    button.disabled = true;
+    button.textContent = text || "Wird verarbeitet...";
+  } else {
+    button.disabled = false;
+    button.textContent = button.dataset.originalText || button.textContent;
+  }
+}
+
+async function submitAdminSetupStart(form) {
+  const status = form.querySelector("[data-form-status]");
+  setFormBusy(form, true, "QR-Code wird erzeugt...");
+  if (status) status.textContent = "";
+  try {
+    const result = await apiJson("/api/admin-auth.php", {
+      method: "POST",
+      body: JSON.stringify({ action: "setup_start", username: form.username.value.trim(), password: form.password.value })
+    });
+    adminAuthState = { ...adminAuthState, loaded: true, loading: false, setup_required: true, authenticated: false, setup: { secret: result.secret, otpauth_uri: result.otpauth_uri } };
+    route();
+  } catch (error) {
+    if (status) status.textContent = error.message;
+  } finally {
+    setFormBusy(form, false);
+  }
+}
+
+async function submitAdminSetupVerify(form) {
+  const status = form.querySelector("[data-form-status]");
+  setFormBusy(form, true, "Wird geprüft...");
+  if (status) status.textContent = "";
+  try {
+    await apiJson("/api/admin-auth.php", {
+      method: "POST",
+      body: JSON.stringify({ action: "setup_verify", code: form.code.value.trim() })
+    });
+    adminAuthState = { loaded: false, loading: false, authenticated: false, setup_required: false, username: "", setup: null };
+    await loadAdminAuth(true);
+  } catch (error) {
+    if (status) status.textContent = error.message;
+  } finally {
+    setFormBusy(form, false);
+  }
+}
+
+async function submitAdminLogin(form) {
+  const status = form.querySelector("[data-form-status]");
+  setFormBusy(form, true, "Login läuft...");
+  if (status) status.textContent = "";
+  try {
+    await apiJson("/api/admin-auth.php", {
+      method: "POST",
+      body: JSON.stringify({ action: "login", username: form.username.value.trim(), password: form.password.value, code: form.code.value.trim() })
+    });
+    adminAuthState = { loaded: false, loading: false, authenticated: false, setup_required: false, username: "", setup: null };
+    await loadAdminAuth(true);
+  } catch (error) {
+    if (status) status.textContent = error.message;
+  } finally {
+    setFormBusy(form, false);
+  }
+}
+
+async function submitNewsletterForm(form) {
+  const status = form.querySelector("[data-form-status]");
+  setFormBusy(form, true, "Wird gespeichert...");
+  if (status) {
+    status.classList.remove("success");
+    status.textContent = "";
+  }
+  try {
+    const payload = Object.fromEntries(new FormData(form).entries());
+    const result = await apiJson("/api/newsletter.php", {
+      method: "POST",
+      body: JSON.stringify(payload)
+    });
+    if (status) {
+      status.classList.add("success");
+      status.textContent = result.message || "Danke, deine Anmeldung wurde gespeichert.";
+    }
+    form.reset();
+  } catch (error) {
+    if (status) status.textContent = error.message;
+  } finally {
+    setFormBusy(form, false);
+  }
+}
+
+async function submitAdminTestMail(form) {
+  const button = form.querySelector("button[type='submit']");
+  const status = form.querySelector("[data-form-status]");
+  const email = form.email.value.trim();
+  const originalText = button?.textContent || "Senden";
+
+  if (button) {
+    button.disabled = true;
+    button.textContent = "Wird gesendet...";
+  }
+  if (status) status.textContent = "";
+
+  try {
+    const result = await apiJson("/api/admin-test-mail.php", {
+      method: "POST",
+      body: JSON.stringify({ email })
+    });
+    if (status) {
+      status.textContent = result.message || "Testmail wurde gesendet.";
+      status.classList.add("success");
+    }
+  } catch (error) {
+    if (status) {
+      status.textContent = error.message;
+      status.classList.remove("success");
+    }
+  } finally {
+    if (button) {
+      button.disabled = false;
+      button.textContent = originalText;
+    }
+  }
 }
 
 async function submitContactForm(form) {
@@ -1352,8 +1702,7 @@ function validateConfigurator(form, { showEmpty = false } = {}) {
 function updateConfigurator(form) {
   const product = getProducts()[form.dataset.slug];
   const qty = selectedConfiguratorQuantity(form, product) || product.quantities[0][0];
-  const extra = Number(form.speed.selectedOptions[0].dataset.price) + Number(form.refill.selectedOptions[0].dataset.price);
-  form.querySelector("[data-total]").textContent = eur(priceFor(product, qty) + extra);
+  form.querySelector("[data-total]").textContent = eur(priceFor(product, qty));
   const limitHint = form.querySelector("[data-limit-hint]");
   if (limitHint) limitHint.textContent = productLimitHint(form.dataset.slug, product);
   validateConfigurator(form);
@@ -1436,12 +1785,20 @@ function route() {
   reveal();
   document.querySelectorAll("[data-configurator]").forEach(updateConfigurator);
   animatePhoneBoost();
+  if (page === "admin") renderAdminQrCode();
   if (page === "admin") {
-    loadAdminOrders();
-    loadServiceMapping();
-    loadResellerHealth(true);
-    clearInterval(resellerHealthTimer);
-    resellerHealthTimer = setInterval(() => loadResellerHealth(true), 60000);
+    if (!adminAuthState.loaded && !adminAuthState.loading) {
+      loadAdminAuth();
+    }
+    if (adminAuthState.authenticated) {
+      loadAdminOrders();
+      loadServiceMapping();
+      loadResellerHealth(true);
+      clearInterval(resellerHealthTimer);
+      resellerHealthTimer = setInterval(() => loadResellerHealth(true), 60000);
+    } else {
+      clearInterval(resellerHealthTimer);
+    }
   } else {
     clearInterval(resellerHealthTimer);
   }

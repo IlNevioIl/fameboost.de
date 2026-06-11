@@ -4,19 +4,29 @@ declare(strict_types=1);
 
 require __DIR__ . '/common.php';
 
+fb_require_admin_auth();
+
 try {
     $catalog = fb_catalog();
     $mappings = fb_reseller_mappings();
     $products = [];
 
     foreach ($catalog as $slug => $product) {
-        $quantities = array_keys($product['items'] ?? []);
+        $items = [];
+        foreach (($product['items'] ?? []) as $quantity => $item) {
+            $items[] = [
+                'quantity' => (int)$quantity,
+                'name' => (string)($item['name'] ?? ''),
+                'price_cents' => (int)($item['price_cents'] ?? 0),
+            ];
+        }
         $products[] = [
             'slug' => $slug,
             'label' => trim(($product['platform'] ?? '') . ' ' . ($product['type'] ?? '')),
             'platform' => $product['platform'] ?? '',
             'type' => $product['type'] ?? '',
-            'quantities' => $quantities,
+            'quantities' => array_map(static fn (array $item): int => $item['quantity'], $items),
+            'items' => $items,
             'mapping' => $mappings['product_mappings'][$slug] ?? null,
         ];
     }
