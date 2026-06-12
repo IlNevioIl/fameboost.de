@@ -26,16 +26,8 @@ try {
             $stats['checked']++;
             $reseller = fb_call_reseller_add($order);
 
-            if (!empty($reseller['ok']) && empty($reseller['already_sent'])) {
-                $order['status'] = 'sent_to_reseller';
-                $order['reseller_status'] = 'sent';
-                $order['hold_released_at'] = fb_now();
-                $order['items'][0]['reseller_order_id'] = $reseller['order_id'] ?? null;
-                $order['items'][0]['reseller_response'] = $reseller['response'] ?? null;
-                $order = fb_append_history($order, 'sent_to_reseller', 'Hold freigegeben und Auftrag an die Reseller-API übergeben.');
-                $stats['sent']++;
-            } elseif (!empty($reseller['already_sent'])) {
-                $order = fb_append_history($order, $order['status'], 'Auftrag war bereits an die Reseller-API übergeben.');
+            if (!empty($reseller['ok'])) {
+                $order = fb_apply_reseller_result_to_order($order, $reseller, 'Hold freigegeben und Auftrag an die Reseller-API übergeben.');
                 $stats['sent']++;
             } elseif (in_array(($reseller['reason'] ?? ''), ['balance_hold', 'cost_hold'], true)) {
                 $order['last_reseller_balance'] = $reseller['balance'] ?? null;
@@ -50,9 +42,12 @@ try {
                 $order = fb_append_history($order, 'fulfillment_hold', $message);
                 $stats['still_on_hold']++;
             } else {
-                $order['status'] = 'needs_review';
-                $order['reseller_status'] = $reseller['reason'] ?? 'reseller_error';
-                $order = fb_append_history($order, 'needs_review', ($reseller['message'] ?? 'Freigabe fehlgeschlagen.') . ' Auftrag wurde nicht gesendet.');
+                $order = fb_apply_reseller_result_to_order($order, $reseller, 'Teilweise Reseller-Übergabe gespeichert.');
+                if (($order['status'] ?? '') !== 'needs_review') {
+                    $order['status'] = 'needs_review';
+                    $order['reseller_status'] = $reseller['reason'] ?? 'reseller_error';
+                    $order = fb_append_history($order, 'needs_review', ($reseller['message'] ?? 'Freigabe fehlgeschlagen.') . ' Auftrag wurde nicht gesendet.');
+                }
                 $stats['failed']++;
             }
         }
@@ -61,10 +56,10 @@ try {
         return ['data' => $data];
     }, ['orders' => []]);
 
-    fb_json_response(['ok' => true, 'message' => 'Hold-Freigabe geprüft.', 'stats' => $stats]);
+    fb_json_response(['ok' => true, 'message' => 'Hold-Freigabe geprÃ¼ft.', 'stats' => $stats]);
 } catch (InvalidArgumentException $error) {
     fb_json_response(['ok' => false, 'message' => $error->getMessage()], 422);
 } catch (Throwable $error) {
     error_log('admin-bulk-action failed: ' . $error->getMessage() . "\n" . $error->getTraceAsString() . "\n", 3, fb_data_path('errors.log'));
-    fb_json_response(['ok' => false, 'message' => 'Bulk-Aktion konnte nicht ausgeführt werden.'], 500);
+    fb_json_response(['ok' => false, 'message' => 'Bulk-Aktion konnte nicht ausgefÃ¼hrt werden.'], 500);
 }

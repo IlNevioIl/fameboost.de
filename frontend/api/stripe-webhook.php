@@ -14,12 +14,12 @@ if ($secret === '') {
 }
 
 if (!fb_verify_stripe_signature($payload, $signature, $secret)) {
-    fb_json_response(['ok' => false, 'message' => 'Ungültige Stripe Signatur.'], 400);
+    fb_json_response(['ok' => false, 'message' => 'UngÃ¼ltige Stripe Signatur.'], 400);
 }
 
 $event = json_decode($payload, true);
 if (!is_array($event) || empty($event['id']) || empty($event['type'])) {
-    fb_json_response(['ok' => false, 'message' => 'Ungültiges Stripe Event.'], 400);
+    fb_json_response(['ok' => false, 'message' => 'UngÃ¼ltiges Stripe Event.'], 400);
 }
 
 if (fb_stripe_event_seen((string)$event['id'])) {
@@ -36,6 +36,9 @@ try {
     if (in_array($type, ['checkout.session.completed', 'checkout.session.async_payment_succeeded', 'checkout.session.async_payment_failed'], true) && is_array($object)) {
         $order = fb_update_order_from_stripe_session($object, $type);
         $handled = $order !== null;
+        if ($order && ($order['payment_status'] ?? '') === 'paid') {
+            fb_attempt_order_fulfillment((string)$order['order_number']);
+        }
     }
 
     fb_mark_stripe_event($event, 'processed');

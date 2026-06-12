@@ -5,36 +5,93 @@ declare(strict_types=1);
 require __DIR__ . '/common.php';
 
 try {
+    fb_rate_limit('create_order', 20, 900);
+
     $input = fb_read_input();
-    $items = $input['items'] ?? [];
-    if (is_array($items) && isset($items['slug'])) {
-        $items = [$items];
+    $itemsInput = $input['items'] ?? [];
+    if (is_array($itemsInput) && isset($itemsInput['slug'])) {
+        $itemsInput = [$itemsInput];
     }
-    if (!is_array($items) || count($items) !== 1) {
-        throw new InvalidArgumentException('Bitte kaufe aktuell genau ein Produkt pro Zahlung. Mehrere Produkte bitte nacheinander bestellen.');
+    if (!is_array($itemsInput) || count($itemsInput) < 1) {
+        throw new InvalidArgumentException('Dein Warenkorb ist leer.');
+    }
+    if (count($itemsInput) > 20) {
+        throw new InvalidArgumentException('Bitte bestelle maximal 20 Positionen auf einmal.');
     }
 
-    $itemInput = $items[0];
-    $slug = (string)($itemInput['slug'] ?? $itemInput['product_slug'] ?? '');
-    $quantity = (int)($itemInput['quantity'] ?? 0);
-    $target = fb_validate_target((string)($itemInput['profile'] ?? $itemInput['target'] ?? ''));
     $email = trim((string)($input['email'] ?? $input['customer_email'] ?? ''));
     $firstName = trim((string)($input['firstName'] ?? $input['first_name'] ?? ''));
     $lastName = trim((string)($input['lastName'] ?? $input['last_name'] ?? ''));
-    $speed = (string)($itemInput['speed'] ?? 'Standard');
-    $refill = (string)($itemInput['refill'] ?? 'Ohne Refill');
+    $address = trim((string)($input['address'] ?? ''));
+    $couponCode = trim((string)($input['coupon_code'] ?? $input['coupon'] ?? ''));
+    $paymentMethod = trim((string)($input['payment_method'] ?? 'all'));
 
     if (!filter_var($email, FILTER_VALIDATE_EMAIL)) {
         throw new InvalidArgumentException('Bitte gib eine gÃ¼ltige E-Mail-Adresse ein.');
     }
-    if ($speed !== 'Standard' || $refill !== 'Ohne Refill') {
-        throw new InvalidArgumentException('Diese Zusatzoptionen sind aktuell noch nicht verfügbar. Bitte bestelle das Paket ohne Zusatzoptionen.');
+
+    $orderItems = [];
+    $amountTotal = 0;
+
+    foreach ($itemsInput as $index => $itemInput) {
+        if (!is_array($itemInput)) {
+            throw new InvalidArgumentException('Ein Warenkorb-Artikel ist ungÃ¼ltig.');
+        }
+        $slug = (string)($itemInput['slug'] ?? $itemInput['product_slug'] ?? '');
+        $quantity = (int)($itemInput['quantity'] ?? 0);
+        $target = fb_validate_target((string)($itemInput['profile'] ?? $itemInput['target'] ?? ''));
+        $speed = fb_speed_option((string)($itemInput['speed'] ?? 'standard'));
+
+        [$product, $catalogItem] = fb_catalog_item($slug, $quantity);
+        $itemPrice = (int)$catalogItem['price_cents'] + (int)$speed['price_cents'];
+        if ($itemPrice <= 0) {
+            throw new InvalidArgumentException('Der Preis fÃ¼r ein Produkt konnte nicht berechnet werden.');
+        }
+
+        $amountTotal += $itemPrice;
+        $orderItems[] = [
+            'slug' => $slug,
+            'name' => $catalogItem['name'],
+            'platform' => $product['platform'],
+            'type' => $product['type'],
+            'quantity' => $quantity,
+            'custom_quantity' => !empty($catalogItem['custom_quantity']),
+            'price_tier_quantity' => $catalogItem['price_tier_quantity'] ?? null,
+            'target' => $target,
+            'target_url' => fb_target_url((string)$product['platform'], $target),
+            'speed' => $speed['key'],
+            'speed_label' => $speed['label'],
+            'speed_price_cents' => $speed['price_cents'],
+            'refill' => 'Ohne Refill',
+            'price_cents' => $itemPrice,
+            'base_price_cents' => (int)$catalogItem['price_cents'],
+            'reseller_service_id' => $catalogItem['reseller_service_id'] ?? null,
+            'reseller_service_name' => $catalogItem['reseller_service_name'] ?? null,
+            'reseller_service_category' => $catalogItem['reseller_service_category'] ?? null,
+            'reseller_rate' => $catalogItem['reseller_rate'] ?? null,
+            'reseller_min' => $catalogItem['reseller_min'] ?? null,
+            'reseller_max' => $catalogItem['reseller_max'] ?? null,
+            'reseller_order_id' => null,
+            'baseline_count' => null,
+            'completed_count' => null,
+            'lost_count' => null,
+            'status' => 'pending_external_payment',
+        ];
     }
 
-    [$product, $catalogItem] = fb_catalog_item($slug, $quantity);
-    $token = fb_random_token();
+    $promotionCode = null;
+    if ($couponCode !== '') {
+        if (empty(fb_config()['stripe_promotion_codes_enabled'])) {
+            throw new InvalidArgumentException('Rabattcodes sind aktuell nicht verfÃ¼gbar.');
+        }
+        $promotionCode = fb_stripe_find_promotion_code($couponCode);
+        if (!$promotionCode) {
+            throw new InvalidArgumentException('Dieser Rabattcode ist ungÃ¼ltig oder nicht mehr aktiv.');
+        }
+    }
 
-    $result = fb_mutate_json_file(fb_orders_file(), function (array $data) use ($product, $catalogItem, $slug, $quantity, $target, $email, $firstName, $lastName, $speed, $refill, $token) {
+    $token = fb_random_token();
+    $orderShell = fb_mutate_json_file(fb_orders_file(), function (array $data) use ($orderItems, $amountTotal, $email, $firstName, $lastName, $address, $couponCode, $token) {
         $orders = isset($data['orders']) && is_array($data['orders']) ? $data['orders'] : [];
         $orderNumber = fb_generate_order_number($orders);
         $now = fb_now();
@@ -45,41 +102,21 @@ try {
             'customer_email' => $email,
             'customer_first_name' => $firstName,
             'customer_last_name' => $lastName,
+            'customer_address' => $address,
             'currency' => 'eur',
-            'amount_total_cents' => $catalogItem['price_cents'],
+            'amount_total_cents' => $amountTotal,
+            'amount_subtotal_cents' => $amountTotal,
+            'amount_paid_cents' => null,
+            'coupon_code' => $couponCode !== '' ? $couponCode : null,
             'status' => 'pending_external_payment',
             'payment_status' => 'pending_external_payment',
             'reseller_status' => 'not_started',
-            'stripe_payment_link_id' => $catalogItem['payment_link_id'],
-            'stripe_payment_link_url' => $catalogItem['payment_url'],
             'created_at' => $now,
             'updated_at' => $now,
             'history' => [
-                ['status' => 'pending_external_payment', 'message' => 'Bestellung intern erstellt und Stripe Payment Link vorbereitet.', 'created_at' => $now],
+                ['status' => 'pending_external_payment', 'message' => 'Bestellung intern erstellt und Stripe Checkout vorbereitet.', 'created_at' => $now],
             ],
-            'items' => [[
-                'slug' => $slug,
-                'name' => $catalogItem['name'],
-                'platform' => $product['platform'],
-                'type' => $product['type'],
-                'quantity' => $quantity,
-                'target' => $target,
-                'target_url' => fb_target_url($product['platform'], $target),
-                'speed' => $speed,
-                'refill' => $refill,
-                'price_cents' => $catalogItem['price_cents'],
-                'reseller_service_id' => $catalogItem['reseller_service_id'] ?? null,
-                'reseller_service_name' => $catalogItem['reseller_service_name'] ?? null,
-                'reseller_service_category' => $catalogItem['reseller_service_category'] ?? null,
-                'reseller_rate' => $catalogItem['reseller_rate'] ?? null,
-                'reseller_min' => $catalogItem['reseller_min'] ?? null,
-                'reseller_max' => $catalogItem['reseller_max'] ?? null,
-                'reseller_order_id' => null,
-                'baseline_count' => null,
-                'completed_count' => null,
-                'lost_count' => null,
-                'status' => 'pending_external_payment',
-            ]],
+            'items' => $orderItems,
         ];
 
         array_unshift($orders, $order);
@@ -88,13 +125,35 @@ try {
         return ['data' => $data, 'order' => $order];
     }, ['orders' => []]);
 
-    $order = $result['order'];
+    $order = $orderShell['order'];
+    $session = fb_create_stripe_checkout_session($order, $promotionCode, $paymentMethod);
+
+    fb_mutate_json_file(fb_orders_file(), function (array $data) use ($order, $session, $promotionCode) {
+        $orders = isset($data['orders']) && is_array($data['orders']) ? $data['orders'] : [];
+        foreach ($orders as &$storedOrder) {
+            if (($storedOrder['order_number'] ?? '') !== $order['order_number']) {
+                continue;
+            }
+            $storedOrder['stripe_checkout_session_id'] = $session['id'];
+            $storedOrder['stripe_checkout_url'] = $session['url'];
+            $storedOrder['stripe_payment_status'] = $session['payment_status'] ?? null;
+            if ($promotionCode) {
+                $storedOrder['stripe_promotion_code_id'] = $promotionCode['id'] ?? null;
+                $storedOrder['stripe_coupon_id'] = $promotionCode['coupon']['id'] ?? null;
+            }
+            $storedOrder = fb_append_history($storedOrder, 'pending_external_payment', 'Stripe Checkout Session wurde erstellt.');
+            break;
+        }
+        $data['orders'] = $orders;
+        return ['data' => $data];
+    }, ['orders' => []]);
+
     fb_json_response([
         'ok' => true,
         'order_number' => $order['order_number'],
         'public_token' => $token,
         'status_url' => '/bestellung-erfolgreich/',
-        'redirect_url' => fb_payment_link_with_reference($order['stripe_payment_link_url'], $order['order_number']),
+        'redirect_url' => $session['url'],
         'message' => 'Bestellung vorbereitet. Du wirst zu Stripe weitergeleitet.',
     ]);
 } catch (InvalidArgumentException $error) {

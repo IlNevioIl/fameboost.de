@@ -14,11 +14,39 @@ $balance = fb_load_json_file(fb_data_path('reseller_balance.json'), []);
 $orders = array_map(function (array $order): array {
     $public = fb_public_order($order);
     $item = $order['items'][0] ?? [];
+    $items = array_map(function (array $entry): array {
+        return [
+            'slug' => $entry['slug'] ?? '',
+            'name' => $entry['name'] ?? '',
+            'platform' => $entry['platform'] ?? '',
+            'type' => $entry['type'] ?? '',
+            'quantity' => $entry['quantity'] ?? 0,
+            'custom_quantity' => !empty($entry['custom_quantity']),
+            'target' => $entry['target'] ?? '',
+            'target_url' => $entry['target_url'] ?? '',
+            'speed_label' => $entry['speed_label'] ?? ($entry['speed'] ?? 'Standard'),
+            'speed_price_cents' => $entry['speed_price_cents'] ?? 0,
+            'price_cents' => $entry['price_cents'] ?? 0,
+            'reseller_service_id' => $entry['reseller_service_id'] ?? null,
+            'reseller_service_name' => $entry['reseller_service_name'] ?? null,
+            'reseller_rate' => $entry['reseller_rate'] ?? null,
+            'estimated_reseller_cost' => fb_estimated_reseller_item_cost($entry),
+            'reseller_order_id' => $entry['reseller_order_id'] ?? null,
+            'status' => $entry['status'] ?? ($order['status'] ?? ''),
+            'baseline_count' => $entry['baseline_count'] ?? null,
+            'completed_count' => $entry['completed_count'] ?? null,
+            'lost_count' => $entry['lost_count'] ?? null,
+            'reseller_remains' => $entry['reseller_remains'] ?? null,
+        ];
+    }, isset($order['items']) && is_array($order['items']) ? $order['items'] : []);
     return $public + [
         'customer_email' => $order['customer_email'] ?? '',
         'customer_name' => trim(($order['customer_first_name'] ?? '') . ' ' . ($order['customer_last_name'] ?? '')),
         'payment_link_id' => $order['stripe_payment_link_id'] ?? '',
         'payment_link_url' => $order['stripe_payment_link_url'] ?? '',
+        'stripe_checkout_session_id' => $order['stripe_checkout_session_id'] ?? '',
+        'stripe_checkout_url' => $order['stripe_checkout_url'] ?? '',
+        'items' => $items,
         'baseline_count' => $item['baseline_count'] ?? null,
         'completed_count' => $item['completed_count'] ?? null,
         'lost_count' => $item['lost_count'] ?? null,

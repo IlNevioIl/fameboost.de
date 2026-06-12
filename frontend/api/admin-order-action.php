@@ -32,7 +32,7 @@ try {
                 }
                 $order['status'] = $status;
                 $order['payment_status'] = in_array($status, ['paid', 'fulfillment_queued', 'fulfillment_hold', 'sent_to_reseller', 'in_progress', 'completed'], true) ? 'paid' : ($order['payment_status'] ?? 'pending_external_payment');
-                $order = fb_append_history($order, $status, 'Status manuell im Admin geändert.');
+                $order = fb_append_history($order, $status, 'Status manuell im Admin geÃ¤ndert.');
             } elseif ($action === 'save_counts') {
                 $baseline = $input['baseline_count'] ?? null;
                 $completed = $input['completed_count'] ?? null;
@@ -42,22 +42,15 @@ try {
                     $expected = (int)$baseline + (int)$item['quantity'];
                     $order['items'][0]['lost_count'] = max(0, $expected - (int)$completed);
                 }
-                $order = fb_append_history($order, $order['status'], 'Zählerstände im Admin gespeichert.');
+                $order = fb_append_history($order, $order['status'], 'ZÃ¤hlerstÃ¤nde im Admin gespeichert.');
             } elseif ($action === 'request_refill') {
                 $order['status'] = 'refill_requested';
                 $order['items'][0]['refill_requested_at'] = fb_now();
-                $order = fb_append_history($order, 'refill_requested', 'Refill-Prüfung im Admin vorgemerkt.');
+                $order = fb_append_history($order, 'refill_requested', 'Refill-PrÃ¼fung im Admin vorgemerkt.');
             } elseif ($action === 'send_reseller' || $action === 'release_hold') {
                 $reseller = fb_call_reseller_add($order, $action === 'release_hold');
-                if (!empty($reseller['ok']) && empty($reseller['already_sent'])) {
-                    $order['status'] = 'sent_to_reseller';
-                    $order['reseller_status'] = 'sent';
-                    $order['hold_released_at'] = fb_now();
-                    $order['items'][0]['reseller_order_id'] = $reseller['order_id'] ?? null;
-                    $order['items'][0]['reseller_response'] = $reseller['response'] ?? null;
-                    $order = fb_append_history($order, 'sent_to_reseller', 'Auftrag wurde an die Reseller-API übergeben.');
-                } elseif (!empty($reseller['already_sent'])) {
-                    $order = fb_append_history($order, $order['status'], 'Auftrag war bereits an die Reseller-API übergeben.');
+                if (!empty($reseller['ok'])) {
+                    $order = fb_apply_reseller_result_to_order($order, $reseller, 'Auftrag wurde an die Reseller-API übergeben.');
                 } elseif (in_array(($reseller['reason'] ?? ''), ['balance_hold', 'cost_hold'], true)) {
                     $order['status'] = 'fulfillment_hold';
                     $order['payment_status'] = 'paid';
@@ -68,6 +61,9 @@ try {
                     $order['min_reseller_balance'] = $reseller['min_balance'] ?? null;
                     $order['estimated_reseller_cost'] = $reseller['estimated_cost'] ?? fb_estimated_reseller_cost($order);
                     $order['manual_review_threshold'] = $reseller['manual_threshold'] ?? null;
+                    foreach (($order['items'] ?? []) as $index => $lineItem) {
+                        $order['items'][$index]['status'] = 'fulfillment_hold';
+                    }
                     if (empty($order['hold_email_sent_at'])) {
                         $sent = fb_notify_customer_balance_hold($order);
                         $order['hold_email_sent_at'] = $sent ? fb_now() : null;
@@ -79,9 +75,12 @@ try {
                     $message = ($reseller['reason'] ?? '') === 'cost_hold' ? 'Reseller-Kosten über Freigabewert. Auftrag wurde pausiert und nicht gesendet.' : 'Reseller-Balance unter Mindestwert. Auftrag wurde pausiert und nicht gesendet.';
                     $order = fb_append_history($order, 'fulfillment_hold', $message);
                 } else {
-                    $order['status'] = 'needs_review';
-                    $order['reseller_status'] = $reseller['reason'] ?? 'reseller_error';
-                    $order = fb_append_history($order, 'needs_review', ($reseller['message'] ?? 'Reseller-Übergabe fehlgeschlagen.') . ' Auftrag wurde nicht gesendet.');
+                    $order = fb_apply_reseller_result_to_order($order, $reseller, 'Teilweise Reseller-Übergabe gespeichert.');
+                    if (($order['status'] ?? '') !== 'needs_review') {
+                        $order['status'] = 'needs_review';
+                        $order['reseller_status'] = $reseller['reason'] ?? 'reseller_error';
+                        $order = fb_append_history($order, 'needs_review', ($reseller['message'] ?? 'Reseller-Übergabe fehlgeschlagen.') . ' Auftrag wurde nicht gesendet.');
+                    }
                 }
             } elseif ($action === 'poll_reseller') {
                 $reseller = fb_call_reseller_status($order);

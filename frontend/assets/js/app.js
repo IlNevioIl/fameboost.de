@@ -6,6 +6,20 @@
   reviewMode: "empty"
 };
 
+const speedOptions = {
+  standard: { label: "Standard", short: "Normale Bearbeitung", price: 0 },
+  fast: { label: "Schnellere Bearbeitung", short: "Priorisierte interne Prüfung", price: 3.99 },
+  custom: { label: "Individuelle Geschwindigkeit", short: "Flexible Bearbeitung nach Paketlage", price: 3.99 }
+};
+
+const paymentMethods = [
+  { id: "all", label: "Alle verfügbaren Methoden", detail: "Stripe zeigt alle aktiven Zahlungsarten", icons: ["Visa", "MC", "PayPal", "Klarna"] },
+  { id: "card", label: "Karte & Wallets", detail: "Visa, Mastercard, Apple Pay, Google Pay", icons: ["Visa", "MC", "Apple", "G Pay"] },
+  { id: "paypal", label: "PayPal", detail: "Zahlung über dein PayPal-Konto", icons: ["PayPal"] },
+  { id: "klarna", label: "Klarna", detail: "Klarna, falls für deine Bestellung verfügbar", icons: ["Klarna"] },
+  { id: "sofort", label: "Sofort", detail: "Direkte Bankzahlung über Stripe", icons: ["Sofort"] }
+];
+
 const baseProducts = {
   "instagram-follower-kaufen": {
     platform: "Instagram",
@@ -281,6 +295,18 @@ function getOrders() {
 
 function setOrders(orders) {
   localStorage.setItem("fk24_orders", JSON.stringify(orders));
+}
+
+function getCheckoutCustomer() {
+  try {
+    return JSON.parse(localStorage.getItem("fb_checkout_customer") || "{}");
+  } catch {
+    return {};
+  }
+}
+
+function setCheckoutCustomer(customer) {
+  localStorage.setItem("fb_checkout_customer", JSON.stringify(customer));
 }
 
 function eur(value) {
@@ -620,8 +646,10 @@ function configurator(slug, product) {
   const first = product.quantities[0];
   return `<form class="configurator product-buy-box reveal" style="${platformStyle(product.platform)}" data-configurator data-slug="${slug}">
     <div class="config-head">${platformLogo(product.platform)}<div><span>Direkt bestellen</span><h2>Paket konfigurieren</h2></div></div>
-    <div class="field"><label>Wähle deine ${product.type}</label><div class="option-grid" data-qty-options>${product.quantities.map((q, i) => `<button class="option ${i === 0 ? "active" : ""}" type="button" data-qty="${q[0]}"><strong>${amountLabel(q[0])}</strong><small>${packageValueLabel(product, q[0], q[1], i)}</small></button>`).join("")}</div></div>
+    <div class="field"><label>Wähle deine ${product.type}</label><div class="option-grid" data-qty-options>${product.quantities.map((q, i) => `<button class="option ${i === 0 ? "active" : ""}" type="button" data-qty="${q[0]}"><strong>${amountLabel(q[0])}</strong><small>${packageValueLabel(product, q[0], q[1], i)}</small></button>`).join("")}<button class="option" type="button" data-custom><strong>Eigene Menge</strong><small>frei wählen</small></button></div></div>
+    <div class="field custom-quantity-row" data-custom-row style="display:none"><label>Eigene Menge</label><input class="input" type="number" min="1" step="1" name="customQuantity" data-custom-qty placeholder="z. B. 750"><small data-limit-hint>${productLimitHint(slug, product)}</small></div>
     <div class="field"><label>Wie lautet dein Profilname oder Link?</label><input class="input" required name="profile" placeholder="z. B. @deinprofil oder Profil-Link"><small>Bitte stelle sicher, dass dein Profil öffentlich erreichbar ist, damit die Bestellung korrekt verarbeitet werden kann.</small></div>
+    <div class="field"><label>Liefergeschwindigkeit</label><div class="speed-grid">${Object.entries(speedOptions).map(([key, option], index) => `<label class="speed-option ${index === 0 ? "active" : ""}"><input type="radio" name="speed" value="${key}" ${index === 0 ? "checked" : ""}><span><strong>${option.label}</strong><small>${option.short}${option.price ? ` · +${eur(option.price)}` : ""}</small></span></label>`).join("")}</div></div>
     <div class="price-box"><span>Gesamtpreis</span><strong data-total>${eur(first[1])}</strong></div>
     <button class="btn btn-primary" style="width:100%" type="submit">In den Warenkorb</button>
     <div class="form-status config-status" data-config-status role="status"></div>
@@ -664,30 +692,62 @@ function cartPage() {
   if (!cart.length) {
     return `<section class="section"><div class="container"><div class="content-block reveal" style="text-align:center"><h1 style="color:var(--ink);font-size:48px">Dein Warenkorb ist noch leer</h1><p class="muted">Wähle ein Social-Media-Paket aus und starte deinen Boost in wenigen Schritten.</p><a class="btn btn-primary" href="/#produkte">Pakete ansehen</a></div></div></section>`;
   }
-  const multiCartNotice = cart.length > 1 ? `<div class="cart-notice"><strong>Hinweis zu mehreren Produkten</strong><p>Aktuell arbeiten wir daran, mehrere Pakete in einer gemeinsamen Zahlung noch einfacher zu machen. Bitte kaufe die Produkte vorübergehend einzeln nacheinander, damit jedes Paket korrekt zugeordnet und verarbeitet werden kann.</p></div>` : "";
-  return `<section class="section"><div class="container split"><div class="content-block reveal"><h1 style="color:var(--ink);font-size:48px">Warenkorb</h1>${multiCartNotice}<div>${cart.map((item, i) => cartItem(item, i)).join("")}</div></div>${summaryBox("/kasse/", "Zur Kasse")}</div></section><section class="section"><div class="container"><div class="section-head"><h2>Noch mehr Sichtbarkeit?</h2></div><div class="grid cards-4">${["instagram-likes-kaufen","tiktok-views-kaufen","instagram-views-kaufen","youtube-views-kaufen"].map((slug) => productCard(slug, getProducts()[slug])).join("")}</div></div></section>`;
+  return `<section class="section"><div class="container split"><div class="content-block reveal"><h1 style="color:var(--ink);font-size:48px">Warenkorb</h1><div>${cart.map((item, i) => cartItem(item, i)).join("")}</div></div>${summaryBox("/kasse/", "Zur Kasse")}</div></section><section class="section"><div class="container"><div class="section-head"><h2>Noch mehr Sichtbarkeit?</h2></div><div class="grid cards-4">${["instagram-likes-kaufen","tiktok-views-kaufen","instagram-views-kaufen","youtube-views-kaufen"].map((slug) => productCard(slug, getProducts()[slug])).join("")}</div></div></section>`;
 }
 
 function cartItem(item, index) {
-  return `<div class="cart-item"><div><h3>${item.title}</h3><div class="line-meta"><span>${item.platform}</span><span>${amountLabel(item.quantity)} ${item.type}</span><span>${item.profile}</span></div></div><div style="text-align:right"><strong>${eur(item.price)}</strong><br><button class="remove" data-remove="${index}">Entfernen</button></div></div>`;
+  return `<div class="cart-item"><div><h3>${item.title}</h3><div class="line-meta"><span>${item.platform}</span><span>${amountLabel(item.quantity)} ${item.type}${item.customQuantity ? " · eigene Menge" : ""}</span><span>${item.speedLabel || "Standard"}</span><span>${item.profile}</span></div></div><div style="text-align:right"><strong>${eur(item.price)}</strong><br><button class="remove" data-remove="${index}">Entfernen</button></div></div>`;
 }
 
 function summaryBox(target, label) {
   const config = getConfig();
   const cart = getCart();
   const subtotal = cart.reduce((sum, item) => sum + item.price, 0);
-  const multi = cart.length > 1;
-  return `<aside class="checkout-box reveal"><h2 style="font-size:28px">Bestellübersicht</h2><div class="summary-row"><span>Zwischensumme</span><strong>${eur(subtotal)}</strong></div><div class="coupon-box"><strong>Aktionscode vorhanden?</strong><small>Den Code kannst du später auf der sicheren Zahlungsseite eingeben. Der Rabatt wird dort berechnet und angewendet.</small></div><div class="summary-row total"><span>Gesamtpreis</span><strong>${eur(subtotal)}</strong></div>${multi ? `<button class="btn btn-light" type="button" style="width:100%" disabled>Bitte einzeln kaufen</button>` : `<a class="btn btn-primary" style="width:100%" href="${target}">${label}</a>`}</aside>`;
+  return `<aside class="checkout-box reveal"><h2 style="font-size:28px">Bestellübersicht</h2><div class="summary-row"><span>Zwischensumme</span><strong>${eur(subtotal)}</strong></div><div class="coupon-box"><strong>Aktionscode vorhanden?</strong><small>Du kannst den Code im nächsten Schritt auf unserer Zahlungsseite eingeben.</small></div><div class="summary-row total"><span>Gesamtpreis</span><strong>${eur(subtotal)}</strong></div><a class="btn btn-primary" style="width:100%" href="${target}">${label}</a></aside>`;
 }
 
 function checkoutPage() {
   const cart = getCart();
   if (!cart.length) return cartPage();
-  if (cart.length > 1) {
-    return `<section class="section"><div class="container"><div class="content-block reveal"><h1 style="color:var(--ink);font-size:46px">Ein Produkt pro Zahlung</h1><p class="muted">Aktuell sind deine Stripe-Zahlungslinks pro Paket einzeln angelegt. Bitte entferne alle bis auf ein Produkt und kaufe die Pakete nacheinander, damit jedes Paket korrekt zugeordnet wird.</p><a class="btn btn-primary" href="/warenkorb/">Zurück zum Warenkorb</a></div></div></section>`;
+  const saved = getCheckoutCustomer();
+  return `<section class="section"><div class="container"><div class="section-head reveal"><h1 style="color:var(--ink);font-size:48px">Sichere Kasse</h1><p>Prüfe deine Daten. Im nächsten Schritt wählst du Zahlungsart und Rabattcode aus.</p></div><div class="split"><form class="content-block reveal" data-checkout><div class="form-grid"><div class="field"><label>Vorname</label><input class="input" name="firstName" required autocomplete="given-name" value="${saved.firstName || ""}"></div><div class="field"><label>Nachname</label><input class="input" name="lastName" required autocomplete="family-name" value="${saved.lastName || ""}"></div><div class="field full"><label>E-Mail-Adresse</label><input class="input" type="email" name="email" required autocomplete="email" value="${saved.email || ""}"></div><div class="field full"><label>Rechnungsadresse</label><input class="input" name="address" required autocomplete="street-address" value="${saved.address || ""}"><small>Stripe kann im Zahlungsfenster zusätzliche Rechnungsdaten abfragen.</small></div><label class="field full"><span><input type="checkbox" required> Ich akzeptiere die AGB.</span></label><label class="field full"><span><input type="checkbox" required> Ich habe die Datenschutzhinweise gelesen.</span></label></div><button class="btn btn-primary" type="submit" style="width:100%">Weiter zur Zahlungsauswahl</button><div class="form-status" data-form-status role="status"></div></form><aside>${summaryBox("/zahlung/", "Zur Zahlung")}<div class="checkout-box reveal" style="margin-top:18px"><h3>Trust-Box</h3><ul><li>Sichere Stripe-Zahlungsseite</li><li>Kein Passwort erforderlich</li><li>Einmalzahlung ohne Abo</li><li>Support bei Fragen</li><li>Automatische Bearbeitung nach bestätigter Zahlung</li></ul></div></aside></div></div></section>`;
+}
+
+function paymentPage() {
+  const cart = getCart();
+  if (!cart.length) return cartPage();
+  const customer = getCheckoutCustomer();
+  if (!customer.email) {
+    return `<section class="section"><div class="container"><div class="content-block reveal"><h1 style="color:var(--ink);font-size:46px">Kassendaten fehlen</h1><p class="muted">Bitte gib zuerst deine Kontaktdaten ein, damit wir die Bestellung korrekt zuordnen können.</p><a class="btn btn-primary" href="/kasse/">Zur Kasse</a></div></div></section>`;
   }
-  const item = cart[0];
-  return `<section class="section"><div class="container"><div class="section-head reveal"><h1 style="color:var(--ink);font-size:48px">Sichere Kasse</h1><p>Deine Bestellung wird vorbereitet. Danach wirst du zur sicheren Stripe-Zahlungsseite weitergeleitet.</p></div><div class="split"><form class="content-block reveal" data-checkout><div class="form-grid"><div class="field"><label>Vorname</label><input class="input" name="firstName" required autocomplete="given-name"></div><div class="field"><label>Nachname</label><input class="input" name="lastName" required autocomplete="family-name"></div><div class="field full"><label>E-Mail-Adresse</label><input class="input" type="email" name="email" required autocomplete="email"></div><div class="field full"><label>Rechnungsadresse</label><input class="input" name="address" required autocomplete="street-address"></div><div class="field full"><label>Zahlungsart</label><input class="input" value="Stripe Zahlungsseite: PayPal, Karte, Apple Pay, Google Pay und weitere aktivierte Methoden" disabled><small>Der Rabattcode wird später direkt auf der Stripe-Zahlungsseite eingegeben.</small></div><label class="field full"><span><input type="checkbox" required> Ich akzeptiere die AGB.</span></label><label class="field full"><span><input type="checkbox" required> Ich habe die Datenschutzhinweise gelesen.</span></label></div><button class="btn btn-primary" type="submit" style="width:100%">Weiter zur sicheren Zahlung</button><div class="form-status" data-form-status role="status"></div></form><aside>${summaryBox("#", "Bestellung vorbereiten")}<div class="checkout-box reveal" style="margin-top:18px"><h3>Trust-Box</h3><ul><li>Sichere Stripe-Zahlungsseite</li><li>Kein Passwort erforderlich</li><li>Einmalzahlung ohne Abo</li><li>Support bei Fragen</li><li>Manuelle Prüfung nach Zahlung in Phase 1</li></ul></div></aside></div></div></section>`;
+  const subtotal = cart.reduce((sum, item) => sum + item.price, 0);
+  const copiedCoupon = localStorage.getItem("fk24_coupon") || "";
+  return `<section class="payment-hero"><div class="container payment-shell">
+    <div class="payment-main reveal">
+      <div class="product-platform-line">${paymentIcon("Stripe")}<span>Sichere Zahlung für ${cart.length} Position${cart.length === 1 ? "" : "en"}</span></div>
+      <h1>Zahlungsart auswählen</h1>
+      <p>Wähle deine bevorzugte Zahlungsart. Danach wirst du zu Stripe weitergeleitet, wo die Zahlung verschlüsselt abgeschlossen wird.</p>
+      <form data-payment>
+        <div class="coupon-panel">
+          <label>Rabattcode</label>
+          <div class="coupon-input-row"><input class="input" name="coupon" placeholder="z. B. START15" value="${copiedCoupon}"><button class="btn btn-light" type="button" data-validate-coupon>Code prüfen</button></div>
+          <small data-coupon-status>Rabatte werden sicher über Stripe Promotion Codes geprüft.</small>
+        </div>
+        <div class="payment-method-grid">
+          ${paymentMethods.map((method, index) => `<label class="payment-method-card ${index === 0 ? "active" : ""}"><input type="radio" name="paymentMethod" value="${method.id}" ${index === 0 ? "checked" : ""}><span><strong>${method.label}</strong><small>${method.detail}</small></span><span class="payment-icons">${method.icons.map(paymentIcon).join("")}</span></label>`).join("")}
+        </div>
+        <button class="btn btn-primary payment-submit" type="submit">Zur sicheren Zahlung</button>
+        <div class="form-status" data-form-status role="status"></div>
+      </form>
+    </div>
+    <aside class="payment-summary reveal">
+      <h2>Bestellübersicht</h2>
+      <div class="payment-items">${cart.map((item) => `<div class="payment-summary-item"><div><strong>${item.title}</strong><small>${amountLabel(item.quantity)} ${item.type} · ${item.speedLabel || "Standard"}</small></div><span>${eur(item.price)}</span></div>`).join("")}</div>
+      <div class="summary-row total"><span>Gesamt vor Rabatt</span><strong>${eur(subtotal)}</strong></div>
+      <div class="payment-trust"><span>SSL</span><span>Kein Passwort</span><span>Einmalzahlung</span><span>Stripe Checkout</span></div>
+      <p class="muted">Apple Pay und Google Pay erscheinen abhängig von Gerät, Browser und Stripe-Verfügbarkeit.</p>
+    </aside>
+  </div></section>`;
 }
 
 function faqPage() {
@@ -750,7 +810,7 @@ function legalPage(title) {
   if (title === "Datenschutz") return datenschutzPage();
   if (title === "Cookie-Hinweise") return cookiePage();
   if (title === "Widerrufsbelehrung") return widerrufPage();
-  const trademarkNotice = title === "Impressum" ? `<div class="notice trademark-notice"><strong>Marken- und Logohinweis:</strong> Instagram, TikTok, YouTube, Twitch, Facebook sowie die dazugehörigen Logos und Markenkennzeichen sind Marken beziehungsweise geschützte Kennzeichen der jeweiligen Rechteinhaber. Die Darstellung auf fameboost.de dient ausschließlich der eindeutigen Plattform-Zuordnung im Shop. FameBoost.de steht in keiner Verbindung zu Meta, ByteDance, Google, Twitch oder anderen Plattformbetreibern und ist kein offizieller Partner dieser Unternehmen.</div>` : "";
+  const trademarkNotice = title === "Impressum" ? `<div class="notice trademark-notice"><strong>Marken- und Logohinweis:</strong> Instagram, TikTok, YouTube, Twitch, Facebook, PayPal, Klarna, Visa, Mastercard, Apple Pay, Google Pay, Sofort, Stripe sowie die dazugehörigen Logos und Markenkennzeichen sind Marken beziehungsweise geschützte Kennzeichen der jeweiligen Rechteinhaber. Die Darstellung auf fameboost.de dient ausschließlich der eindeutigen Plattform- und Zahlungsarten-Zuordnung im Shop. FameBoost.de steht in keiner Verbindung zu Meta, ByteDance, Google, Twitch, Zahlungsanbietern oder anderen Plattformbetreibern und ist kein offizieller Partner dieser Unternehmen.</div>` : "";
   return `<section class="product-hero"><div class="container"><h1>${title}</h1><p class="lead">Platzhalterseite für die rechtliche Live-Version von fameboost.de.</p></div></section><section class="section"><div class="container"><div class="content-block reveal"><div class="notice">Wichtig: Die finalen Rechtstexte müssen von einem Anwalt oder einem spezialisierten Generator wie Händlerbund, eRecht24, IT-Recht Kanzlei oder Trusted Shops erstellt und geprüft werden.</div>${trademarkNotice}<h2 style="margin-top:24px">${title}</h2><p>Dieser Bereich ist als struktureller Platzhalter vorbereitet. Vor dem Livegang müssen Anbieterinformationen, gesetzliche Pflichtangaben, Widerrufsregeln, Zahlungsbedingungen, Datenschutzprozesse und Cookie-Hinweise vollständig ergänzt und geprüft werden.</p><p>Es werden keine unbelegten Garantien, keine fremden Bewertungen und keine Aussagen zu offiziellen Plattformpartnerschaften verwendet.</p></div></div></section>`;
 }
 
@@ -765,7 +825,7 @@ function datenschutzPage() {
     <h2>3. Bestellungen</h2>
     <p>Für Bestellungen verarbeiten wir Name, E-Mail-Adresse, Rechnungsadresse, Produkt, Menge, Profilname oder Link, interne Order-ID, Zahlungsstatus, Bestellstatus und technische Statusdaten. Diese Daten werden zur Vertragsabwicklung, Zahlungszuordnung, Supportbearbeitung und Betrugsprävention benötigt.</p>
     <h2>4. Zahlungsabwicklung über Stripe</h2>
-    <p>Die Zahlung erfolgt über Stripe Payment Links beziehungsweise Stripe Checkout. Zahlungsdaten werden direkt bei Stripe verarbeitet. FameBoost.de speichert den Zahlungsstatus, die Zuordnung zur Bestellung und technische Webhook-Daten.</p>
+    <p>Die Zahlung erfolgt über Stripe Checkout. Zahlungsdaten werden direkt bei Stripe verarbeitet. FameBoost.de speichert den Zahlungsstatus, die Zuordnung zur Bestellung und technische Webhook-Daten.</p>
     <h2>5. Technische Dienstleister für die Auftragsabwicklung</h2>
     <p>Nach bestätigter Zahlung können produktbezogene Daten wie Menge und Profilname oder Link an technische Dienstleister übermittelt werden, soweit dies zur Bearbeitung der Bestellung erforderlich ist.</p>
     <h2>6. Kontaktformular und Refill-Anfragen</h2>
@@ -839,7 +899,7 @@ function impressumPage() {
     <p>Umsatzsteuer-Identifikationsnummer gemäß § 27a UStG:<br>
     DE458833644</p>
 
-    <div class="notice trademark-notice"><strong>Marken- und Logohinweis:</strong> Instagram, TikTok, YouTube, Twitch, Facebook sowie die dazugehörigen Logos und Markenkennzeichen sind Marken beziehungsweise geschützte Kennzeichen der jeweiligen Rechteinhaber. Die Darstellung auf fameboost.de dient ausschließlich der eindeutigen Plattform-Zuordnung im Shop. FameBoost.de steht in keiner Verbindung zu Meta, ByteDance, Google, Twitch oder anderen Plattformbetreibern und ist kein offizieller Partner dieser Unternehmen.</div>
+    <div class="notice trademark-notice"><strong>Marken- und Logohinweis:</strong> Instagram, TikTok, YouTube, Twitch, Facebook, PayPal, Klarna, Visa, Mastercard, Apple Pay, Google Pay, Sofort, Stripe sowie die dazugehörigen Logos und Markenkennzeichen sind Marken beziehungsweise geschützte Kennzeichen der jeweiligen Rechteinhaber. Die Darstellung auf fameboost.de dient ausschließlich der eindeutigen Plattform- und Zahlungsarten-Zuordnung im Shop. FameBoost.de steht in keiner Verbindung zu Meta, ByteDance, Google, Twitch, Zahlungsanbietern oder anderen Plattformbetreibern und ist kein offizieller Partner dieser Unternehmen.</div>
   </article></div></section>`;
 }
 
@@ -860,7 +920,7 @@ function adminPage() {
   if (!adminAuthState.authenticated) {
     return `<section class="product-hero"><div class="container"><h1>Admin Login</h1><p class="lead">Melde dich mit Benutzername, Passwort und Google-Authenticator-Code an.</p></div></section><section class="section"><div class="container"><form class="content-block admin-auth-card reveal" data-admin-login><div class="form-grid"><div class="field"><label>Benutzername</label><input class="input" name="username" required autocomplete="username"></div><div class="field"><label>Passwort</label><input class="input" name="password" type="password" required autocomplete="current-password"></div><div class="field full"><label>Google-Authenticator-Code</label><input class="input" name="code" inputmode="numeric" required autocomplete="one-time-code"></div></div><button class="btn btn-primary" type="submit">Einloggen</button><div class="form-status" data-form-status role="status"></div></form></div></section>`;
   }
-  return `<section class="product-hero"><div class="container"><h1>Admin</h1><p class="lead">Backend-Übersicht für Bestellungen, Zahlungsprüfung, Reseller-Mapping, Status, Refill und Zählerstände.</p><button class="btn btn-light" type="button" data-admin-logout>Logout</button></div></section><section class="section"><div class="container"><div class="content-block reveal"><div class="admin-toolbar"><div><h2>Bestellungen</h2><p class="muted">Phase 1: Zahlung wird über Stripe Payment Links geprüft. Bei niedriger Reseller-Balance werden bezahlte Bestellungen automatisch pausiert.</p></div><div class="admin-actions"><button class="btn btn-light" type="button" data-release-holds>Alle Holds freigeben</button><button class="btn btn-light" type="button" data-admin-refresh>Aktualisieren</button></div></div><div data-admin-orders><div class="notice">Bestellungen werden geladen...</div></div></div><div class="content-block reveal"><div class="admin-toolbar"><div><h2>Reseller-Service-Mapping</h2><p class="muted">Suche Services aus dem Reseller-Panel und ordne sie unseren Produkten zu. Gespeichert wird nur die Service-ID und Metadaten, nicht dein API-Key.</p></div><button class="btn btn-light" type="button" data-services-refresh>Services neu laden</button></div><div data-reseller-health><div class="notice">Service-Verfügbarkeit wird geprüft...</div></div><div data-service-mapping><div class="notice">Services werden geladen...</div></div></div>${adminMailTestBlock()}</div></section>`;
+  return `<section class="product-hero"><div class="container"><h1>Admin</h1><p class="lead">Backend-Übersicht für Bestellungen, Zahlungsprüfung, Reseller-Mapping, Status, Refill und Zählerstände.</p><button class="btn btn-light" type="button" data-admin-logout>Logout</button></div></section><section class="section"><div class="container"><div class="content-block reveal"><div class="admin-toolbar"><div><h2>Bestellungen</h2><p class="muted">Zahlungen laufen über Stripe Checkout Sessions. Bei niedriger Reseller-Balance oder hohem Einkauf werden bezahlte Bestellungen automatisch pausiert.</p></div><div class="admin-actions"><button class="btn btn-light" type="button" data-release-holds>Alle Holds freigeben</button><button class="btn btn-light" type="button" data-admin-refresh>Aktualisieren</button></div></div><div data-admin-orders><div class="notice">Bestellungen werden geladen...</div></div></div><div class="content-block reveal"><div class="admin-toolbar"><div><h2>Reseller-Service-Mapping</h2><p class="muted">Suche Services aus dem Reseller-Panel und ordne sie unseren Produkten zu. Gespeichert wird nur die Service-ID und Metadaten, nicht dein API-Key.</p></div><button class="btn btn-light" type="button" data-services-refresh>Services neu laden</button></div><div data-reseller-health><div class="notice">Service-Verfügbarkeit wird geprüft...</div></div><div data-service-mapping><div class="notice">Services werden geladen...</div></div></div>${adminMailTestBlock()}</div></section>`;
 }
 
 async function loadAdminAuth(force = false) {
@@ -921,7 +981,8 @@ function getOrderLookupFromUrl() {
 
 function renderOrderStatus(order, token) {
   const steps = order.steps || [];
-  return `<h2>Status: ${order.status_label}</h2><p class="muted">${order.message}</p><div class="progress-shell"><div class="progress-bar" style="width:${order.progress || 20}%"></div></div><div class="order-detail-grid"><div><strong>Bestellnummer</strong><span>${order.order_number}</span></div><div><strong>Produkt</strong><span>${order.product}</span></div><div><strong>Menge</strong><span>${amountLabel(order.quantity)} ${order.type}</span></div><div><strong>Gesamt</strong><span>${centsToEur(order.amount_total_cents)}</span></div></div><div class="status-steps">${steps.map((step) => `<div class="status-step ${step.state}"><span></span><strong>${step.label}</strong></div>`).join("")}</div>${feedbackBlock(order, token)}`;
+  const items = order.items || [];
+  return `<h2>Status: ${order.status_label}</h2><p class="muted">${order.message}</p><div class="progress-shell"><div class="progress-bar" style="width:${order.progress || 20}%"></div></div><div class="order-detail-grid"><div><strong>Bestellnummer</strong><span>${order.order_number}</span></div><div><strong>Positionen</strong><span>${items.length || 1}</span></div><div><strong>Gesamt</strong><span>${centsToEur(order.amount_total_cents)}</span></div><div><strong>Bezahlt</strong><span>${order.amount_paid_cents !== null && order.amount_paid_cents !== undefined ? centsToEur(order.amount_paid_cents) : "Wartet"}</span></div></div><div class="order-items-list">${items.map((item) => `<div class="order-item-row"><div><strong>${item.name}</strong><small>${amountLabel(item.quantity)} ${item.type}${item.custom_quantity ? " · eigene Menge" : ""} · ${item.speed_label || "Standard"}</small></div><span>${item.status || order.status}</span></div>`).join("")}</div><div class="status-steps">${steps.map((step) => `<div class="status-step ${step.state}"><span></span><strong>${step.label}</strong></div>`).join("")}</div>${feedbackBlock(order, token)}`;
 }
 
 function feedbackBlock(order, token) {
@@ -963,23 +1024,27 @@ async function createBackendOrder(form) {
   const cart = getCart();
   const status = form.querySelector("[data-form-status]");
   const button = form.querySelector("button[type='submit']");
-  if (cart.length !== 1) {
-    if (status) status.textContent = "Bitte kaufe aktuell genau ein Produkt pro Zahlung.";
+  const customer = getCheckoutCustomer();
+  if (!cart.length) {
+    if (status) status.textContent = "Dein Warenkorb ist leer.";
     return;
   }
-  const item = cart[0];
+  if (!customer.email) {
+    if (status) status.textContent = "Bitte fülle zuerst die Kasse aus.";
+    location.href = "/kasse/";
+    return;
+  }
   const payload = {
-    firstName: form.firstName.value,
-    lastName: form.lastName.value,
-    email: form.email.value,
-    address: form.address.value,
-    items: [{
+    ...customer,
+    coupon_code: form.coupon?.value || "",
+    payment_method: form.paymentMethod?.value || "all",
+    items: cart.map((item) => ({
       slug: item.slug,
       quantity: item.quantity,
       profile: item.profile,
       speed: item.speed,
       refill: item.refill
-    }]
+    }))
   };
   if (button) {
     button.disabled = true;
@@ -998,8 +1063,40 @@ async function createBackendOrder(form) {
     if (status) status.textContent = error.message;
     if (button) {
       button.disabled = false;
-      button.textContent = "Weiter zur sicheren Zahlung";
+      button.textContent = "Zur sicheren Zahlung";
     }
+  }
+}
+
+function continueToPayment(form) {
+  setCheckoutCustomer({
+    firstName: form.firstName.value,
+    lastName: form.lastName.value,
+    email: form.email.value,
+    address: form.address.value
+  });
+  location.href = "/zahlung/";
+}
+
+async function validateCoupon(form) {
+  if (!form) return;
+  const input = form.coupon;
+  const status = form.querySelector("[data-coupon-status]");
+  const code = input?.value.trim() || "";
+  if (!code) {
+    if (status) status.textContent = "Bitte gib einen Rabattcode ein.";
+    return;
+  }
+  if (status) status.textContent = "Code wird geprüft...";
+  try {
+    const result = await apiJson("/api/validate-promotion-code.php", {
+      method: "POST",
+      body: JSON.stringify({ code })
+    });
+    localStorage.setItem("fk24_coupon", code);
+    if (status) status.textContent = result.label || "Rabattcode aktiv.";
+  } catch (error) {
+    if (status) status.textContent = error.message;
   }
 }
 
@@ -1009,6 +1106,30 @@ function renderAdminOrders(orders, notice, meta = {}) {
   const balance = meta.last_reseller_balance?.balance !== undefined ? `${meta.last_reseller_balance.balance} ${meta.last_reseller_balance.currency || ""}` : "noch nicht geprüft";
   const holdNotice = meta.hold_count ? `<div class="notice hold-notice"><strong>${meta.hold_count} Bestellung(en) auf Hold.</strong><br>Letzte Panel-Balance: ${balance}. Mindestwert: ${meta.min_reseller_balance ?? 20}. Lade Balance nach und klicke dann auf „Alle Holds freigeben“ oder gib einzelne Bestellungen frei.</div>` : "";
   return `${notice ? `<div class="notice">${notice}</div>` : ""}${holdNotice}<div class="admin-order-list">${orders.map((order) => {
+    const items = order.items?.length ? order.items : [{
+      name: order.product,
+      type: order.type,
+      quantity: order.quantity,
+      target: order.target,
+      target_url: order.target_url,
+      price_cents: order.amount_total_cents,
+      speed_label: "Standard",
+      reseller_service_id: order.reseller_service_id,
+      reseller_service_name: order.reseller_service_name,
+      reseller_order_id: order.reseller_order_id,
+      reseller_rate: order.reseller_rate,
+      estimated_reseller_cost: order.estimated_reseller_cost,
+      status: order.status
+    }];
+    const itemRows = items.map((item) => `<div class="admin-item-row">
+      <div><strong>${item.name}</strong><small>${amountLabel(item.quantity)} ${item.type}${item.custom_quantity ? " · eigene Menge" : ""} · ${item.speed_label || "Standard"} · ${centsToEur(item.price_cents || 0)}</small></div>
+      <div><a href="${item.target_url || "#"}" target="_blank" rel="noopener">${item.target || "Ziel fehlt"}</a><small>${[
+        item.reseller_service_id ? `Service #${item.reseller_service_id}` : "",
+        item.reseller_order_id ? `JAP-ID ${item.reseller_order_id}` : "",
+        item.estimated_reseller_cost !== null && item.estimated_reseller_cost !== undefined ? `EK ca. ${Number(item.estimated_reseller_cost).toFixed(4)}` : "",
+        item.status ? `Status ${item.status}` : ""
+      ].filter(Boolean).join(" · ")}</small></div>
+    </div>`).join("");
     const resellerMeta = [
       order.reseller_service_id ? `Service #${order.reseller_service_id}` : "",
       order.reseller_service_name ? order.reseller_service_name : "",
@@ -1026,10 +1147,11 @@ function renderAdminOrders(orders, notice, meta = {}) {
       </div>
       <div class="order-detail-grid">
         <div><strong>Kunde</strong><span>${order.customer_name || "Unbekannt"}<br>${order.customer_email}</span></div>
-        <div><strong>Produkt</strong><span>${order.product}<br>${amountLabel(order.quantity)} ${order.type}</span></div>
-        <div><strong>Ziel</strong><a href="${order.target_url}" target="_blank" rel="noopener">${order.target}</a></div>
-        <div><strong>Stripe</strong><a href="${order.payment_link_url}" target="_blank" rel="noopener">${order.payment_link_id}</a></div>
+        <div><strong>Positionen</strong><span>${items.length}</span></div>
+        <div><strong>Bezahlt</strong><span>${order.amount_paid_cents !== null && order.amount_paid_cents !== undefined ? centsToEur(order.amount_paid_cents) : "Wartet"}</span></div>
+        <div><strong>Stripe</strong><span>${order.stripe_checkout_session_id || order.payment_link_id || "Noch offen"}</span></div>
       </div>
+      <div class="admin-item-list">${itemRows}</div>
       ${resellerMeta ? `<div class="admin-meta">${resellerMeta}</div>` : ""}
       <form class="admin-counts" data-admin-counts data-order="${order.order_number}">
         <label>Start-Zähler<input class="input" name="baseline_count" type="number" min="0" value="${order.baseline_count ?? ""}"></label>
@@ -1141,6 +1263,48 @@ function serviceMaxWarning(service, slug) {
   return `Warnung: Dieser Reseller-Service erlaubt maximal ${amountLabel(serviceMax)}, wir bieten bei diesem Produkt aber bis ${amountLabel(offerMax)} an. Kunden könnten sonst größere Pakete kaufen, die nicht zum Service passen.`;
 }
 
+function panelMoney(value) {
+  const number = Number(value || 0);
+  const decimals = Math.abs(number) < 1 && number !== 0 ? 4 : 2;
+  return `${number.toLocaleString("de-DE", { minimumFractionDigits: decimals, maximumFractionDigits: decimals })}`;
+}
+
+function renderResellerCostBox(product) {
+  const rate = numericServiceValue(product.mapping?.rate);
+  const items = Array.isArray(product.items) ? product.items : [];
+  if (!product.mapping?.service_id) {
+    return `<div class="reseller-cost-box"><strong>Kalkulation</strong><span>Noch kein Mapping gesetzt. Sobald ein Service zugewiesen ist, werden Einkauf, Verkauf und Rohertrag pro Menge angezeigt.</span></div>`;
+  }
+  if (!Number.isFinite(rate) || rate <= 0) {
+    return `<div class="reseller-cost-box"><strong>Kalkulation</strong><span>Für das aktuelle Mapping ist keine auswertbare Rate hinterlegt.</span></div>`;
+  }
+  const rows = items
+    .slice()
+    .sort((a, b) => Number(a.quantity || 0) - Number(b.quantity || 0))
+    .map((item) => {
+      const quantity = Number(item.quantity || 0);
+      const sale = Number(item.price_cents || 0) / 100;
+      const cost = (rate / 1000) * quantity;
+      const gross = sale - cost;
+      const margin = sale > 0 ? (gross / sale) * 100 : 0;
+      return `<tr>
+        <td>${amountLabel(quantity)}</td>
+        <td>${eur(sale)}</td>
+        <td>${panelMoney(cost)}</td>
+        <td class="${gross < 0 ? "admin-danger-text" : ""}">${eur(gross)}</td>
+        <td>${Number.isFinite(margin) ? `${Math.round(margin)} %` : "–"}</td>
+      </tr>`;
+    })
+    .join("");
+  return `<div class="reseller-cost-box">
+    <div><strong>Kalkulation pro Menge</strong><span>Rate ${panelMoney(rate)} pro 1.000 · grob ohne Stripe-Gebühren und Wechselkurs</span></div>
+    <div class="reseller-cost-scroll"><table class="reseller-cost-table">
+      <thead><tr><th>Menge</th><th>Verkauf</th><th>Einkauf ca.</th><th>Rohertrag ca.</th><th>Marge</th></tr></thead>
+      <tbody>${rows}</tbody>
+    </table></div>
+  </div>`;
+}
+
 function renderServiceMapping(data) {
   resellerServicesState = { ...resellerServicesState, products: data.products || [], services: data.services || [], health: data.health || resellerServicesState.health };
   const products = resellerServicesState.products;
@@ -1183,7 +1347,7 @@ function renderActiveProductNote(product) {
   const maxWarning = mappedServiceMax && offeredMax && mappedServiceMax < offeredMax ? `<br><strong class="admin-danger-text">Max-Warnung:</strong> Der zugewiesene Service kann maximal ${amountLabel(mappedServiceMax)}, im Shop sind aber bis ${amountLabel(offeredMax)} angeboten.` : "";
   const health = resellerServicesState.health?.products?.[product.slug];
   const healthNote = health && health.available === false ? `<br><strong class="admin-danger-text">Warnung:</strong> Zugewiesener Service #${health.service_id} ist aktuell nicht verfügbar. Käufe für dieses Produkt werden blockiert, bis du neu zuweist.` : "";
-  return `<div class="admin-meta ${health?.available === false || maxWarning ? "admin-meta-danger" : ""}"><strong>Aktives Produkt:</strong> ${product.label} · Mengen: ${(product.quantities || []).map(amountLabel).join(", ")}${product.mapping?.service_name ? `<br><strong>Aktuelles Mapping:</strong> #${product.mapping.service_id} · ${product.mapping.service_name}` : ""}${maxNote}${maxWarning}${healthNote}</div>`;
+  return `<div class="admin-meta ${health?.available === false || maxWarning ? "admin-meta-danger" : ""}"><strong>Aktives Produkt:</strong> ${product.label} · Mengen: ${(product.quantities || []).map(amountLabel).join(", ")}${product.mapping?.service_name ? `<br><strong>Aktuelles Mapping:</strong> #${product.mapping.service_id} · ${product.mapping.service_name}` : ""}${maxNote}${maxWarning}${healthNote}${renderResellerCostBox(product)}</div>`;
 }
 
 function renderServiceCard(service, activeSlug) {
@@ -1387,12 +1551,29 @@ function bindEvents() {
       const product = getProducts()[slug];
       if (!validateConfigurator(form, { showEmpty: true })) return;
       const qty = selectedConfiguratorQuantity(form, product);
-      const base = priceFor(product, qty);
-      const price = base;
-      setCart([...getCart(), { slug, title: product.title, platform: product.platform, type: product.type, quantity: qty, profile: form.profile.value, speed: "Standard", refill: "Ohne Refill", price }]);
+      const speedKey = selectedSpeed(form);
+      const price = cartItemTotal(product, qty, speedKey);
+      setCart([...getCart(), {
+        slug,
+        title: product.title,
+        platform: product.platform,
+        type: product.type,
+        quantity: qty,
+        customQuantity: Boolean(form.querySelector(".option.active")?.matches("[data-custom]")),
+        profile: form.profile.value,
+        speed: speedKey,
+        speedLabel: speedOptions[speedKey]?.label || "Standard",
+        speedPrice: speedPrice(speedKey),
+        refill: "Ohne Refill",
+        price
+      }]);
       location.href = "/warenkorb/";
     }
     if (form.matches("[data-checkout]")) {
+      event.preventDefault();
+      continueToPayment(form);
+    }
+    if (form.matches("[data-payment]")) {
       event.preventDefault();
       createBackendOrder(form);
     }
@@ -1462,6 +1643,13 @@ function bindEvents() {
       resellerServicesState.sort = event.target.value;
       updateServiceMappingView();
     }
+    if (event.target.matches("[name='speed']")) {
+      const form = event.target.closest("[data-configurator]");
+      form?.querySelectorAll(".speed-option").forEach((node) => node.classList.toggle("active", node.contains(event.target)));
+    }
+    if (event.target.matches("[name='paymentMethod']")) {
+      document.querySelectorAll(".payment-method-card").forEach((node) => node.classList.toggle("active", node.contains(event.target)));
+    }
     if (event.target.closest("[data-configurator]")) updateConfigurator(event.target.closest("[data-configurator]"));
   });
 
@@ -1474,6 +1662,12 @@ function bindEvents() {
   });
 
   document.addEventListener("click", (event) => {
+    const couponCheck = event.target.closest("[data-validate-coupon]");
+    if (couponCheck) {
+      event.preventDefault();
+      validateCoupon(couponCheck.closest("[data-payment]"));
+      return;
+    }
     const option = event.target.closest("[data-configurator] .option");
     if (!option) return;
     const form = option.closest("[data-configurator]");
@@ -1643,8 +1837,26 @@ function priceFor(product, qty) {
   const exact = product.quantities.find((q) => q[0] === qty);
   if (exact) return exact[1];
   const sorted = [...product.quantities].sort((a, b) => a[0] - b[0]);
-  const nearest = sorted.reduce((best, row) => Math.abs(row[0] - qty) < Math.abs(best[0] - qty) ? row : best, sorted[0]);
-  return Math.max(productMinPrice(product), (nearest[1] / nearest[0]) * qty);
+  const tier = sorted.find((row) => row[0] >= qty) || sorted.at(-1);
+  return Math.max(productMinPrice(product), Math.ceil((tier[1] / tier[0]) * qty * 100) / 100);
+}
+
+function selectedSpeed(form) {
+  const value = form.querySelector("[name='speed']:checked")?.value || "standard";
+  return speedOptions[value] ? value : "standard";
+}
+
+function speedPrice(key) {
+  return speedOptions[key]?.price || 0;
+}
+
+function cartItemTotal(product, qty, speedKey) {
+  return priceFor(product, qty) + speedPrice(speedKey);
+}
+
+function paymentIcon(label) {
+  const cls = label.toLowerCase().replace(/[^a-z0-9]+/g, "-");
+  return `<span class="payment-logo payment-logo-${cls}">${label}</span>`;
 }
 
 function validateConfigurator(form, { showEmpty = false } = {}) {
@@ -1677,7 +1889,8 @@ function validateConfigurator(form, { showEmpty = false } = {}) {
 function updateConfigurator(form) {
   const product = getProducts()[form.dataset.slug];
   const qty = selectedConfiguratorQuantity(form, product) || product.quantities[0][0];
-  form.querySelector("[data-total]").textContent = eur(priceFor(product, qty));
+  const speedKey = selectedSpeed(form);
+  form.querySelector("[data-total]").textContent = eur(cartItemTotal(product, qty, speedKey));
   const limitHint = form.querySelector("[data-limit-hint]");
   if (limitHint) limitHint.textContent = productLimitHint(form.dataset.slug, product);
   validateConfigurator(form);
@@ -1750,6 +1963,7 @@ function route() {
   else if (page === "home") app.innerHTML = home();
   else if (page === "cart") app.innerHTML = cartPage();
   else if (page === "checkout") app.innerHTML = checkoutPage();
+  else if (page === "payment") app.innerHTML = paymentPage();
   else if (page === "faq") app.innerHTML = faqPage();
   else if (page === "contact") app.innerHTML = contactPage();
   else if (page === "refill") app.innerHTML = contactPage("refill");
