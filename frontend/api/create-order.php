@@ -27,7 +27,7 @@ try {
     $paymentMethod = trim((string)($input['payment_method'] ?? 'all'));
 
     if (!filter_var($email, FILTER_VALIDATE_EMAIL)) {
-        throw new InvalidArgumentException('Bitte gib eine gÃ¼ltige E-Mail-Adresse ein.');
+        throw new InvalidArgumentException('Bitte gib eine gÃƒÂ¼ltige E-Mail-Adresse ein.');
     }
 
     $orderItems = [];
@@ -35,7 +35,7 @@ try {
 
     foreach ($itemsInput as $index => $itemInput) {
         if (!is_array($itemInput)) {
-            throw new InvalidArgumentException('Ein Warenkorb-Artikel ist ungÃ¼ltig.');
+            throw new InvalidArgumentException('Ein Warenkorb-Artikel ist ungÃƒÂ¼ltig.');
         }
         $slug = (string)($itemInput['slug'] ?? $itemInput['product_slug'] ?? '');
         $quantity = (int)($itemInput['quantity'] ?? 0);
@@ -45,7 +45,7 @@ try {
         [$product, $catalogItem] = fb_catalog_item($slug, $quantity);
         $itemPrice = (int)$catalogItem['price_cents'] + (int)$speed['price_cents'];
         if ($itemPrice <= 0) {
-            throw new InvalidArgumentException('Der Preis fÃ¼r ein Produkt konnte nicht berechnet werden.');
+            throw new InvalidArgumentException('Der Preis fÃƒÂ¼r ein Produkt konnte nicht berechnet werden.');
         }
 
         $amountTotal += $itemPrice;
@@ -81,12 +81,14 @@ try {
 
     $promotionCode = null;
     if ($couponCode !== '') {
+        fb_rate_limit_coupon_attempt();
+        $couponCode = fb_validate_coupon_code_input($couponCode);
         if (empty(fb_config()['stripe_promotion_codes_enabled'])) {
-            throw new InvalidArgumentException('Rabattcodes sind aktuell nicht verfÃ¼gbar.');
+            throw new InvalidArgumentException('Rabattcodes sind aktuell nicht verfÃƒÂ¼gbar.');
         }
         $promotionCode = fb_stripe_find_promotion_code($couponCode);
         if (!$promotionCode) {
-            throw new InvalidArgumentException('Dieser Rabattcode ist ungÃ¼ltig oder nicht mehr aktiv.');
+            throw new InvalidArgumentException('Dieser Rabattcode ist ungÃƒÂ¼ltig oder nicht mehr aktiv.');
         }
     }
 

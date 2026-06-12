@@ -95,6 +95,24 @@ function fb_rate_limit(string $scope, int $limit, int $windowSeconds): void
     }
 }
 
+function fb_rate_limit_coupon_attempt(): void
+{
+    fb_rate_limit('coupon_attempt_short', 8, 600);
+    fb_rate_limit('coupon_attempt_hour', 20, 3600);
+}
+
+function fb_validate_coupon_code_input(string $code): string
+{
+    $code = trim($code);
+    if ($code === '') {
+        throw new InvalidArgumentException('Bitte gib einen Rabattcode ein.');
+    }
+    if (strlen($code) < 2 || strlen($code) > 64 || !preg_match('/^[A-Za-z0-9][A-Za-z0-9._-]*$/', $code)) {
+        throw new InvalidArgumentException('Dieser Rabattcode ist ungültig oder nicht mehr aktiv.');
+    }
+    return $code;
+}
+
 function fb_start_admin_session(): void
 {
     if (session_status() === PHP_SESSION_ACTIVE) {

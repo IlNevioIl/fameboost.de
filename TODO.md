@@ -1,41 +1,132 @@
-Wichtig für cPanel:
+# FameBoost.de TODO
+
+Stand: 12.06.2026
+
+## Wichtig für cPanel
 
 - Lege in cPanel am besten `noreply@fameboost.de` als E-Mail-Adresse an.
-- Aktiviere/prüfe in cPanel unter **Email Deliverability** SPF und DKIM für `fameboost.de`.
+- Aktiviere/prüfe in cPanel unter **Email Deliverability** SPF, DKIM und wenn möglich DMARC für `fameboost.de`.
 - Wenn du deployest, muss der Inhalt von `frontend` in den Webroot, oder der Document Root muss auf `frontend` zeigen. Dann sind die Endpunkte unter `/api/...` erreichbar.
+- Beim Upload auf den Server nicht überschreiben oder löschen:
+  - `/public_html/api/_private/config.local.php`
+  - `/public_html/api/_private/data/`
+- Nach jedem Upload prüfen: `/api/_private/config.php` und `/api/_private/config.local.php` dürfen nicht öffentlich lesbar sein.
 
-PHP-/Backend-Hinweis:
+## Live-Konfiguration
 
-- Das aktuelle PHP-Setup ist für lokale Tests, Kontaktformular, Bestellvorbereitung, Stripe Payment Links, Stripe Webhooks und erste Admin-Aktionen vorbereitet.
-- Für Production müssen wir daran noch weiterarbeiten, besonders an Admin-Login, Rate Limits, Spam-Schutz, Monitoring, sauberem Fehlerlogging, Backup-Strategie und E-Mail-Zustellung.
-- Das lokale PHP-Setup ist noch kein vollständig gehärtetes Production-Backend.
+- In `config.local.php` auf dem Server final setzen und prüfen:
+  - `stripe_secret_key`
+  - `stripe_webhook_secret`
+  - `reseller_api_key`
+  - Admin-Mail-Adresse
+  - Absender-Mail-Adresse
+  - `reseller_min_balance`
+  - `reseller_manual_review_threshold`
+  - Speed-Aufpreise
+- Schreibrechte für `/api/_private/data/` prüfen, damit Bestellungen, Newsletter, Mapping, Sessions und Logs gespeichert werden können.
+- Backup-Plan für `/api/_private/data/` einrichten und testweise eine Wiederherstellung prüfen.
 
-Analytics-/Tracking-Hinweis:
+## Stripe und Zahlung
 
-- Für den Livebetrieb brauchen wir ein DSGVO-sauberes Analytics-Setup, damit sichtbar wird, wie viel Traffic auf die Website kommt und welche Seiten besucht werden.
-- Zusätzlich sollten Shop-Events gemessen werden, zum Beispiel Produkt angesehen, Paket konfiguriert, Produkt in den Warenkorb gelegt, Warenkorb geöffnet, Checkout gestartet und Kauf abgeschlossen.
-- Besonders wichtig ist die Auswertung, welche Produkte und Mengen am häufigsten in den Warenkorb gelegt werden, wo Nutzer abspringen und welche Plattform-Seiten am besten funktionieren.
-- Die Umsetzung sollte mit Cookie-Banner/Consent verbunden werden, damit Tracking erst nach Zustimmung aktiv wird, sofern rechtlich erforderlich.
+- Stripe Payment Methods aktivieren und live testen:
+  - Karte
+  - PayPal
+  - Klarna
+  - Sofort
+  - Apple Pay / Google Pay, sofern im Stripe-Konto verfügbar
+- Stripe Promotion Code `START15` anlegen und mit FameBoost.de testen.
+- Stripe Webhook auf `https://fameboost.de/api/stripe-webhook.php` prüfen.
+- Relevante Events:
+  - `checkout.session.completed`
+  - `checkout.session.async_payment_succeeded`
+  - `checkout.session.async_payment_failed`
+- Testen, dass doppelte Webhooks keine zweite Reseller-Ausführung starten.
+- Komplette Testkäufe durchführen:
+  - einzelnes Produkt
+  - mehrere Produkte im Warenkorb
+  - gültiger Rabattcode
+  - ungültiger Rabattcode
+  - abgebrochene Zahlung
+  - erfolgreiche Zahlung
+  - Statusseite nach Zahlung
 
-Backend Phase 1:
+## Reseller / JustAnotherPanel
 
-- JAP/JustAnotherPanel API-Key fehlt noch und muss lokal in `frontend/api/_private/config.local.php` eingetragen werden. Diese Datei ist absichtlich nicht im Git.
-- Stripe Webhook Secret fehlt noch und muss lokal in `frontend/api/_private/config.local.php` eingetragen werden.
-- Reseller-Service-IDs fehlen noch pro Produkt/Menge und müssen serverseitig im Katalog ergänzt werden, bevor echte Reseller-Aufträge ausgelöst werden.
-- Im `/admin/` gibt es jetzt ein Reseller-Service-Mapping: Alle Panel-Services können geladen, durchsucht und einem FameBoost-Produkt zugeordnet werden. Die ausgewählte Service-ID wird privat in `_private/data/reseller_mappings.json` gespeichert.
-- Für Production in cPanel einen Cronjob einrichten, der jede Minute `https://fameboost.de/api/admin-reseller-health.php?refresh=1` aufruft. Dadurch wird geprüft, ob gemappte Reseller-Services noch verfügbar sind. Falls ein Service fehlt, bleibt das Mapping gespeichert, Käufe für das Produkt werden blockiert und eine Admin-Mail wird gesendet.
-- Vor echter Automation müssen alle aktiven FameBoost-Produkte auf passende Reseller-Services gemappt und mit Testbestellungen geprüft werden.
-- In Stripe muss ein Webhook auf `https://fameboost.de/api/stripe-webhook.php` eingerichtet werden. Relevante Events: `checkout.session.completed`, `checkout.session.async_payment_succeeded`, `checkout.session.async_payment_failed`.
-- Stripe Payment Links sind angebunden und bekommen automatisch `client_reference_id` mit der internen Order-ID. Stripe muss für den Livebetrieb passend auf die Erfolgs-/Statusseite zurückleiten, z. B. `/bestellung-erfolgreich/`.
-- Die Erfolgsseite pollt den Bestellstatus und wartet zuerst auf den Stripe-Webhook. Danach können Reseller-Statusupdates angezeigt werden, sobald JAP-Service-IDs und API-Key hinterlegt sind.
-- Öffentliche Statuslinks sind mit zufälligem Token geschützt, rate-limitiert und zeigen keine sensiblen Zielprofile/Links mehr an. Wenn jemand Order-ID und Token aktiv weitergibt, kann die Statusseite trotzdem gesehen werden; deshalb dürfen dort keine internen oder sensiblen Daten stehen.
-- Nach jeder echten Reseller-Bestellung soll automatisch die JAP/Reseller-Balance abgefragt und intern gespeichert werden.
-- Nach jeder Reseller-Bestellung soll eine interne Admin-Mail an `nevio.vogt@gmail.com` gesendet werden mit: Käuferdaten, Produkt, Menge, Profil/Link, Kundenzahlbetrag, Reseller-Kosten, verbleibender Reseller-Balance und interner Order-ID.
-- Wenn die Reseller-Balance vor dem Senden unter `reseller_min_balance` liegt, darf kein Auftrag automatisch an JAP gesendet werden. Die Bestellung wird auf `fulfillment_hold` gesetzt, der Kunde erhält einmalig eine neutrale 24-Stunden-Info-Mail, und die Freigabe erfolgt später manuell im Admin.
-- Wenn die geschätzten Reseller-Kosten über `reseller_manual_review_threshold` liegen oder nicht berechnet werden können, wird die Bestellung ebenfalls auf `fulfillment_hold` gesetzt und nicht automatisch an JAP gesendet. Diese Bestellungen müssen immer einzeln im Admin geprüft und freigegeben werden.
-- Für Hold-Fälle soll eine interne Admin-Mail an `nevio.vogt@gmail.com` gesendet werden, damit hohe Reseller-Kosten oder niedrige Balance nicht übersehen werden.
-- Für mehrere pausierte Bestellungen gibt es eine dynamische Hold-Freigabe im Admin: einzelne Bestellung freigeben oder alle Holds prüfen/freigeben, nachdem Balance nachgeladen wurde.
-- In Phase 1 wird genau ein Produkt pro Zahlung unterstützt. Multi-Warenkorb kommt erst später mit sauberer Zahlungszuordnung.
-- `/admin/` ist aktuell bewusst ohne Login für Tests. Vor Production muss ein geschützter Admin-Login ergänzt werden.
-- Nach Deployment prüfen: `https://fameboost.de/api/_private/config.php` muss 403/Forbidden liefern. Wenn nicht, liegt die private Config zu nah am Webroot oder `.htaccess` greift nicht.
-- `frontend/.htaccess` ist für cPanel vorbereitet, damit direkte Seitenaufrufe und Reloads funktionieren, während echte Dateien wie API-Endpunkte normal erreichbar bleiben.
+- Alle aktiven FameBoost-Produkte im Admin sauber auf passende Reseller-Services mappen.
+- Bei jedem Mapping prüfen:
+  - Service ist aktiv
+  - maximale Menge passt zu unseren angebotenen Mengen
+  - Rate ist plausibel
+  - Einkaufskosten und Marge passen
+- Cronjob in cPanel einrichten, der jede Minute den Reseller-Service-Check ausführt.
+- Health-Check live testen: Wenn ein gemappter Service nicht mehr verfügbar ist, muss das Produkt für Kunden als ausverkauft erscheinen und intern eine Warnung auslösen.
+- Testen, dass Bestellungen mit Reseller-Kosten über dem Freigabewert auf Hold gehen und nicht automatisch gesendet werden.
+- Testen, dass Bestellungen bei zu niedriger Reseller-Balance auf Hold gehen und der Kunde die neutrale 24-Stunden-Info bekommt.
+- Noch offen: Nach jeder echten Reseller-Bestellung eine interne Admin-Mail mit Käuferdaten, Produkt, Menge, Verkaufspreis, Reseller-Kosten, verbleibender Balance und Order-ID senden.
+
+## Neue Features
+
+- Custom-Speed finalisieren:
+  - Wenn Kunden `Individuelle Geschwindigkeit` wählen, muss klar abgefragt werden, was genau gewünscht ist.
+  - Backend muss diese Zusatzangabe speichern und im Admin sichtbar machen.
+  - Admin soll Custom-Speed-Items eindeutig markieren, damit sie manuell geprüft oder passend weitergegeben werden können.
+  - Reseller-Automation darf Custom-Speed nur automatisch ausführen, wenn dafür sichere Regeln definiert sind.
+  - Kundentexte müssen neutral bleiben und keine konkrete Liefergarantie versprechen.
+- Profil-Suche / Profil-Prüfung einbauen:
+  - Kunde soll Profilname oder Link eingeben und optional eine Vorschau/Prüfung bekommen.
+  - Plattform, Profilname, URL und öffentliche Erreichbarkeit sollen erkannt werden.
+  - Vor Reseller-Ausführung sollen, soweit technisch/legal möglich, öffentliche Kennzahlen gespeichert werden.
+  - Nach Abschluss sollen Kennzahlen erneut speicherbar sein, damit Admin Refill-Fälle besser prüfen kann.
+  - Falls eine automatische Profil-Suche nicht zuverlässig möglich ist, braucht es einen Admin-Workflow für manuelle Prüfung.
+
+## Analytics und Newsletter
+
+- DSGVO-sauberes Analytics-Konzept finalisieren.
+- Messen, sofern Consent vorliegt:
+  - Seitenaufrufe
+  - Produkt angesehen
+  - Menge ausgewählt
+  - Produkt in den Warenkorb gelegt
+  - Checkout gestartet
+  - Zahlung erfolgreich
+  - Coupon eingegeben
+- Newsletter weiter absichern:
+  - Double-Opt-In prüfen oder einbauen
+  - Abmeldelink einbauen
+  - Export/Löschung von Newsletter-Adressen für Datenschutzanfragen vorbereiten
+
+## Sicherheit und Abuse-Schutz
+
+- Optional Cloudflare Turnstile oder vergleichbaren Schutz für besonders spam-anfällige Formulare einbauen:
+  - Kontakt
+  - Newsletter
+  - Coupon
+  - Admin-Login
+- Admin-Login live mit starkem Passwort und 2FA testen.
+- Rate Limits live prüfen.
+- Fehlerlogging auf dem Server prüfen, ohne Secrets in Logs zu schreiben.
+- Server-Zugriff, cPanel-Zugang, Stripe-Zugang und Reseller-Zugang mit 2FA absichern.
+
+## Recht und Live-Check
+
+- Rechtstexte vor Livebetrieb final prüfen lassen:
+  - Impressum
+  - Datenschutz
+  - AGB
+  - Widerrufsbelehrung
+  - Cookie-Hinweis
+  - Checkout-Texte
+- Prüfen, ob der Verkauf der konkreten Social-Media-Services mit Plattformregeln, Zahlungsanbieter-Regeln und deutschem Recht vereinbar ist.
+- Alle Markenhinweise prüfen: Social-Media-Logos und Zahlungslogos gehören den jeweiligen Rechteinhabern.
+- Vor Livegang einmal komplett testen:
+  - Desktop
+  - Mobile
+  - Warenkorb
+  - Zahlung
+  - Statusseite
+  - Admin-Panel
+  - Kontaktformular
+  - Newsletter
+  - SEO-Meta-Daten
+  - Sitemap/robots
+  - Ladezeit

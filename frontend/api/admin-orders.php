@@ -10,6 +10,16 @@ $config = fb_config();
 $rawOrders = fb_orders();
 $holdCount = count(array_filter($rawOrders, fn(array $order): bool => ($order['status'] ?? '') === 'fulfillment_hold'));
 $balance = fb_load_json_file(fb_data_path('reseller_balance.json'), []);
+$liveBalance = fb_call_reseller_balance();
+if (!empty($liveBalance['ok'])) {
+    $balance = fb_load_json_file(fb_data_path('reseller_balance.json'), []);
+} elseif (!$balance) {
+    $balance = [
+        'ok' => false,
+        'message' => $liveBalance['message'] ?? 'Reseller-Balance konnte nicht geladen werden.',
+        'checked_at' => fb_now(),
+    ];
+}
 
 $orders = array_map(function (array $order): array {
     $public = fb_public_order($order);
@@ -74,6 +84,7 @@ fb_json_response([
     'notice' => $config['admin_notice'] ?? '',
     'hold_count' => $holdCount,
     'min_reseller_balance' => (float)($config['reseller_min_balance'] ?? 20.0),
+    'manual_review_threshold' => (float)($config['reseller_manual_review_threshold'] ?? 5.0),
     'last_reseller_balance' => $balance,
     'orders' => $orders,
 ]);

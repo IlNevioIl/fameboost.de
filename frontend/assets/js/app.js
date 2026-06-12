@@ -1101,11 +1101,18 @@ async function validateCoupon(form) {
 }
 
 function renderAdminOrders(orders, notice, meta = {}) {
-  if (!orders.length) return `<div class="notice">${notice || "Noch keine Bestellungen vorhanden."}</div>`;
   const statuses = ["pending_external_payment", "payment_failed", "manual_payment_check", "paid", "fulfillment_queued", "fulfillment_hold", "sent_to_reseller", "in_progress", "partially_completed", "completed", "refill_requested", "needs_review", "canceled", "refunded"];
-  const balance = meta.last_reseller_balance?.balance !== undefined ? `${meta.last_reseller_balance.balance} ${meta.last_reseller_balance.currency || ""}` : "noch nicht geprüft";
+  const balance = meta.last_reseller_balance?.balance !== undefined ? `${Number(meta.last_reseller_balance.balance).toLocaleString("de-DE", { minimumFractionDigits: 2, maximumFractionDigits: 4 })} ${meta.last_reseller_balance.currency || ""}` : "noch nicht geprüft";
+  const balanceTime = meta.last_reseller_balance?.checked_at ? new Date(meta.last_reseller_balance.checked_at).toLocaleString("de-DE") : "";
+  const balanceStatus = meta.last_reseller_balance?.message && meta.last_reseller_balance?.balance === undefined ? meta.last_reseller_balance.message : `Zuletzt geprüft${balanceTime ? `: ${balanceTime}` : ""}`;
+  const adminBalancePanel = `<div class="admin-balance-panel">
+    <div><strong>Reseller-Balance</strong><span>${balance}</span><small>${balanceStatus}</small></div>
+    <div><strong>Mindestbalance</strong><span>${meta.min_reseller_balance ?? 20}</span><small>Darunter gehen bezahlte Orders automatisch auf Hold.</small></div>
+    <div><strong>Manuelle Freigabe</strong><span>über ${meta.manual_review_threshold ?? 5}</span><small>Wenn der Reseller-Einkauf einer Bestellung höher ist, wird nicht automatisch ausgeliefert.</small></div>
+  </div>`;
   const holdNotice = meta.hold_count ? `<div class="notice hold-notice"><strong>${meta.hold_count} Bestellung(en) auf Hold.</strong><br>Letzte Panel-Balance: ${balance}. Mindestwert: ${meta.min_reseller_balance ?? 20}. Lade Balance nach und klicke dann auf „Alle Holds freigeben“ oder gib einzelne Bestellungen frei.</div>` : "";
-  return `${notice ? `<div class="notice">${notice}</div>` : ""}${holdNotice}<div class="admin-order-list">${orders.map((order) => {
+  if (!orders.length) return `${notice ? `<div class="notice">${notice}</div>` : ""}${adminBalancePanel}<div class="notice">Noch keine Bestellungen vorhanden.</div>`;
+  return `${notice ? `<div class="notice">${notice}</div>` : ""}${adminBalancePanel}${holdNotice}<div class="admin-order-list">${orders.map((order) => {
     const items = order.items?.length ? order.items : [{
       name: order.product,
       type: order.type,

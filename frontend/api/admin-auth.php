@@ -55,7 +55,8 @@ try {
     }
 
     if ($action === 'setup_verify') {
-        fb_rate_limit('admin_setup_verify', 10, 600);
+        fb_rate_limit('admin_setup_verify', 8, 600);
+        fb_rate_limit('admin_setup_verify_hour', 20, 3600);
         if ($setupComplete) {
             fb_json_response(['ok' => false, 'message' => 'Admin wurde bereits eingerichtet.'], 409);
         }
@@ -81,7 +82,8 @@ try {
     }
 
     if ($action === 'login') {
-        fb_rate_limit('admin_login', 12, 600);
+        fb_rate_limit('admin_login', 6, 600);
+        fb_rate_limit('admin_login_hour', 24, 3600);
         if (!$setupComplete) {
             fb_json_response(['ok' => false, 'message' => 'Admin ist noch nicht eingerichtet.'], 409);
         }

@@ -28,6 +28,9 @@ try {
     if (!$order || !hash_equals($order['public_token_hash'] ?? '', fb_hash_token($token))) {
         throw new InvalidArgumentException('Bestellung nicht gefunden.');
     }
+    if (!empty($order['feedback_submitted'])) {
+        throw new InvalidArgumentException('Feedback wurde für diese Bestellung bereits gespeichert.');
+    }
 
     fb_mutate_json_file(fb_feedback_file(), function (array $data) use ($orderNumber, $rating, $message) {
         $data['feedback'] = $data['feedback'] ?? [];

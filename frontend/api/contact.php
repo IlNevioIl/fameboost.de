@@ -1,6 +1,8 @@
 <?php
 declare(strict_types=1);
 
+require __DIR__ . '/common.php';
+
 header('Content-Type: application/json; charset=UTF-8');
 
 const MAIL_TO = 'nevio@oivengames.com';
@@ -58,6 +60,9 @@ function send_mail(string $to, string $subject, string $body, string $replyTo = 
 if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
     respond(405, ['ok' => false, 'message' => 'Methode nicht erlaubt.']);
 }
+
+fb_rate_limit('contact_form_short', 5, 600);
+fb_rate_limit('contact_form_hour', 20, 3600);
 
 if (field('website', 250) !== '') {
     respond(200, ['ok' => true]);

@@ -5,13 +5,10 @@ declare(strict_types=1);
 require __DIR__ . '/common.php';
 
 try {
-    fb_rate_limit('validate_coupon', 40, 900);
+    fb_rate_limit_coupon_attempt();
 
     $input = fb_read_input();
-    $code = trim((string)($input['code'] ?? $input['coupon_code'] ?? ''));
-    if ($code === '') {
-        throw new InvalidArgumentException('Bitte gib einen Rabattcode ein.');
-    }
+    $code = fb_validate_coupon_code_input((string)($input['code'] ?? $input['coupon_code'] ?? ''));
     if (empty(fb_config()['stripe_promotion_codes_enabled'])) {
         throw new InvalidArgumentException('Rabattcodes sind aktuell nicht verfÃ¼gbar.');
     }
