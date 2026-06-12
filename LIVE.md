@@ -9,8 +9,6 @@ Diese Liste enthält nur noch offene Punkte vor dem öffentlichen Livegang. Bere
 - [ ] Datenschutzseite final juristisch prüfen lassen.
 - [ ] AGB final juristisch prüfen lassen.
 - [ ] Widerrufsbelehrung final juristisch prüfen lassen.
-- [ ] Lieferbedingungen final prüfen lassen.
-- [ ] Zahlungsarten-Seite final prüfen.
 - [ ] Cookie-Hinweise final prüfen.
 - [ ] In der Widerrufsbelehrung ist noch ein Platzhalter:
   - `[Anschrift der Oiven Games GmbH ergänzen]`

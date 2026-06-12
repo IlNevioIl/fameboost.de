@@ -25,10 +25,10 @@ try {
     $refill = (string)($itemInput['refill'] ?? 'Ohne Refill');
 
     if (!filter_var($email, FILTER_VALIDATE_EMAIL)) {
-        throw new InvalidArgumentException('Bitte gib eine gültige E-Mail-Adresse ein.');
+        throw new InvalidArgumentException('Bitte gib eine gÃ¼ltige E-Mail-Adresse ein.');
     }
     if ($speed !== 'Standard' || $refill !== 'Ohne Refill') {
-        throw new InvalidArgumentException('Schnellere Bearbeitung und Refill-Optionen werden in Phase 1 noch nicht über Stripe Payment Links abgerechnet. Bitte wähle Standard und Ohne Refill.');
+        throw new InvalidArgumentException('Diese Zusatzoptionen sind aktuell noch nicht verfügbar. Bitte bestelle das Paket ohne Zusatzoptionen.');
     }
 
     [$product, $catalogItem] = fb_catalog_item($slug, $quantity);

@@ -250,6 +250,7 @@ const mainFaq = [
   ["Kann ich mehrere Pakete kombinieren?", "Ja. Du kannst mehrere Produkte in den Warenkorb legen und gemeinsam bestellen."]
 ];
 
+const unavailableProductMessage = "Dieses Produkt ist aktuell ausverkauft und sollte in ein paar Stunden wieder verfügbar sein.";
 let productLimits = {};
 let adminAuthState = { loaded: false, loading: false, authenticated: false, setup_required: false, username: "", setup: null };
 
@@ -306,7 +307,10 @@ async function loadProductLimits() {
     const data = await apiJson("/api/product-limits.php");
     productLimits = data.limits || {};
   } catch {
-    productLimits = {};
+    productLimits = Object.fromEntries(Object.keys(getProducts()).map((slug) => [slug, {
+      available: false,
+      availability_message: unavailableProductMessage
+    }]));
   }
 }
 
@@ -323,7 +327,7 @@ function productLimitHint(slug, product) {
   const limit = productLimits[slug] || {};
   const max = productMaxQuantity(slug, product);
   if (limit.available === false) {
-    return limit.availability_message || "Dieses Produkt ist aktuell kurzzeitig nicht verfügbar.";
+    return limit.availability_message || unavailableProductMessage;
   }
   if (limit.has_reseller_mapping && limit.max) {
     return `Die maximal mögliche Menge liegt aktuell bei: ${amountLabel(max)}.`;
@@ -333,7 +337,7 @@ function productLimitHint(slug, product) {
 
 function productAvailabilityMessage(slug) {
   const limit = productLimits[slug] || {};
-  return limit.available === false ? (limit.availability_message || "Dieses Produkt ist aktuell kurzzeitig nicht verfügbar.") : "";
+  return limit.available === false ? (limit.availability_message || unavailableProductMessage) : "";
 }
 
 function selectedConfiguratorQuantity(form, product) {
@@ -388,7 +392,7 @@ function layout() {
     <div class="container nav">
       <a class="brand" href="/" aria-label="FameBoost.de">${brandLogo()}</a>
       <nav class="nav-links" id="nav-links">
-        ${["Instagram","TikTok","YouTube","Twitch","Facebook"].map(navPlatformItem).join("")}<a class="nav-plain" href="/#bewertungen">Bewertungen</a><a class="nav-plain" href="/faq/">FAQ</a><a class="nav-plain" href="/kontakt/">Kontakt</a>
+        ${["Instagram","TikTok","YouTube","Twitch","Facebook"].map(navPlatformItem).join("")}<a class="nav-plain" href="/faq/">FAQ</a><a class="nav-plain" href="/kontakt/">Kontakt</a>
       </nav>
       <div class="header-actions">
         <a class="cart-link" href="/warenkorb/" aria-label="Warenkorb">${cartIcon()}<span class="cart-label">Warenkorb</span><span class="cart-count" data-cart-count>0</span></a>
@@ -451,7 +455,7 @@ function footer() {
         </div>
         <div><h3 class="footer-platform-heading">${platformLogo("Instagram", true)}</h3><ul><li><a href="/instagram-follower-kaufen/">Instagram Follower kaufen</a></li><li><a href="/instagram-likes-kaufen/">Instagram Likes kaufen</a></li><li><a href="/instagram-views-kaufen/">Instagram Views kaufen</a></li><li><a href="/instagram/">Instagram Kommentare kaufen</a></li></ul></div>
         <div><h3 class="footer-platform-heading">${platformLogo("TikTok")} ${platformLogo("YouTube")}<span>TikTok & YouTube</span></h3><ul><li><a href="/tiktok-follower-kaufen/">TikTok Follower kaufen</a></li><li><a href="/tiktok-likes-kaufen/">TikTok Likes kaufen</a></li><li><a href="/tiktok-views-kaufen/">TikTok Views kaufen</a></li><li><a href="/youtube-abonnenten-kaufen/">YouTube Abonnenten kaufen</a></li><li><a href="/youtube-views-kaufen/">YouTube Views kaufen</a></li></ul></div>
-        <div><h3>Service</h3><ul><li><a href="/faq/">FAQ</a></li><li><a href="/kontakt/">Kontakt</a></li><li><a href="/zahlungsarten/">Zahlungsarten</a></li><li><a href="/lieferbedingungen/">Lieferbedingungen</a></li><li><a href="/refill-anfrage/">Refill-Anfrage</a></li></ul></div>
+        <div><h3>Service</h3><ul><li><a href="/faq/">FAQ</a></li><li><a href="/kontakt/">Kontakt</a></li><li><a href="/refill-anfrage/">Refill-Anfrage</a></li></ul></div>
         <div><h3>Rechtliches</h3><ul><li><a href="/impressum/">Impressum</a></li><li><a href="/datenschutz/">Datenschutz</a></li><li><a href="/cookie-hinweise/">Cookie-Hinweise</a></li><li><a href="/agb/">AGB</a></li><li><a href="/widerrufsbelehrung/">Widerrufsbelehrung</a></li></ul></div>
       </div>
       <div class="footer-bottom">
@@ -484,7 +488,6 @@ function home() {
     ${categoryOverview()}
     ${stepsSection()}
     ${trustSection()}
-    ${customerFeedbackSection()}
     <section class="section"><div class="container grid cards-3">
       ${infoCard("Mehr Sichtbarkeit für dein Profil", "Ein professioneller erster Eindruck kann entscheiden, ob neue Besucher deinem Profil vertrauen, deine Inhalte anschauen oder weiterklicken. Mit FameBoost.de kannst du gezielt Pakete auswählen, die zu deinem Profil und deiner Plattform passen.")}
       ${infoCard("Einfacher Ablauf", "Du brauchst keine technischen Kenntnisse. Wähle die Plattform, entscheide dich für eine Menge und gib deinen Profilnamen oder Link ein. Danach kannst du deine Bestellung sicher bezahlen.")}
@@ -564,35 +567,6 @@ function trustSection() {
   return `<section class="section section-dark"><div class="container"><div class="section-head reveal"><h2>Warum FameBoost.de?</h2><p>Premium-Gefühl, klare Prozesse und vorsichtige, belegbare Aussagen statt lauter Versprechen.</p></div><div class="grid cards-3">${items.map((x) => `<div class="card trust-card reveal"><div class="icon-box">${x[0].slice(0, 1)}</div><h3>${x[0]}</h3><p class="muted">${x[1]}</p></div>`).join("")}</div></div></section>`;
 }
 
-function customerFeedbackSection() {
-  const placeholders = [
-    ["Anonym", "Verifizierte Bewertung folgt", "Hier erscheint eine echte Kundenbewertung, sobald sie geprüft und freigegeben wurde."],
-    ["Anonym", "Noch kein öffentliches Feedback", "Wir zeigen an dieser Stelle nur echte Rückmeldungen aus nachvollziehbaren Bestellungen."],
-    ["Anonym", "Bewertung wird vorbereitet", "Sobald verifizierte Bewertungen vorliegen, werden sie hier transparent eingebunden."]
-  ];
-  return `<section class="section review-section" id="bewertungen"><div class="container">
-    <div class="review-head reveal">
-      <div>
-        <span class="eyebrow">Kundenfeedback</span>
-        <h2>Bewertungen von FameBoost.de</h2>
-        <p>Kundenbewertungen werden hier angezeigt, sobald verifizierte Bewertungen vorliegen. Es werden keine erfundenen Stimmen als echte Bewertungen ausgegeben.</p>
-      </div>
-      <div class="review-summary" aria-label="Noch keine verifizierte Gesamtbewertung">
-        <strong>Neu</strong>
-        <span>Verifizierte Bewertungen folgen</span>
-      </div>
-    </div>
-    <div class="review-grid">
-      ${placeholders.map((review) => `<article class="review-card reveal">
-        <div class="review-rating pending" aria-label="Noch keine verifizierte Sternebewertung"><span></span><span></span><span></span><span></span><span></span></div>
-        <h3>${review[1]}</h3>
-        <p>${review[2]}</p>
-        <div class="review-footer"><strong>${review[0]}</strong><span>Noch nicht veröffentlicht</span></div>
-      </article>`).join("")}
-    </div>
-  </div></section>`;
-}
-
 function infoCard(title, text) {
   return `<div class="card reveal"><h3>${title}</h3><p class="muted">${text}</p></div>`;
 }
@@ -669,7 +643,7 @@ function seoText(product) {
   <p>Bei FameBoost.de ist der Ablauf bewusst einfach gehalten. Du wählst zuerst ${product.platform} als Plattform, entscheidest dich für ${product.type} und legst die passende Menge fest. Danach trägst du deinen Profilnamen oder den Link ein. Ein Passwort wird nicht abgefragt. Diese Trennung ist wichtig, weil Login-Daten privat bleiben sollen und für die Verarbeitung der Bestellung nicht benötigt werden.</p>
   <p>Vor jeder Bestellung solltest du prüfen, ob dein Profil öffentlich sichtbar ist und ob der angegebene Name exakt stimmt. Schreibfehler, private Profile oder geänderte Nutzernamen können die Bearbeitung verzögern. Auch die Lieferzeit kann variieren, etwa durch Paketgröße, Auslastung oder technische Prüfungen. Deshalb werden Lieferzeiten als bearbeitbare Angaben geführt und nicht als starres Versprechen dargestellt.</p>
   <p>Das Paket eignet sich besonders für Profile, die bereits Inhalte veröffentlichen und ihren Auftritt strukturierter wirken lassen möchten. Dazu gehören Creator, Musiker, lokale Dienstleister, Shops, Coaches, Streamer und Marken. Entscheidend bleibt, dass neue Besucher auf ein gepflegtes Profil treffen: klares Profilbild, verständliche Bio, aktive Inhalte und ein Angebot, das zur Zielgruppe passt.</p>
-  <p>Die Refill-Option ist für ausgewählte Pakete vorgesehen. Wenn sie aktiviert ist, kann innerhalb des angegebenen Schutzzeitraums eine Prüfung angefragt werden, falls ein Teil der Menge sinkt. Ob und wie eine Nachfüllung möglich ist, hängt von den Bedingungen des jeweiligen Pakets ab. Diese Angaben sind im Adminbereich anpassbar, damit der Betreiber nur belegbare Zusagen macht.</p>
+  <p>Die Refill-Option ist für ausgewählte Pakete vorgesehen. Wenn sie aktiviert ist, kann innerhalb des angegebenen Schutzzeitraums eine Prüfung angefragt werden, falls ein Teil der Menge sinkt. Ob und wie eine Nachfüllung möglich ist, hängt von den Bedingungen des jeweiligen Pakets ab.</p>
   <p>Aus SEO-Sicht ist eine saubere Seitenstruktur wichtig. Deshalb hat jedes Hauptprodukt eine eigene URL, eine eigene H1, interne Links zu verwandten Produkten, FAQ-Inhalte und Meta-Daten. So können Nutzer und Suchmaschinen leichter verstehen, welches Paket für welche Plattform gedacht ist. Gleichzeitig bleibt die Seite transparent und vermeidet Aussagen wie garantierte Reichweite, offizielle Partnerschaften oder risikofreie Ergebnisse.</p>
   <p>Wenn du ${product.keyword} nutzt, kombiniere das Paket am besten mit einer realen Content-Planung. Verzeichnisse, Highlights, klare Beschreibungen, gute Vorschaubilder und regelmäßige Inhalte wirken zusammen stärker als einzelne Signale. FameBoost.de positioniert sich deshalb als Shop für einfache Social-Media-Wachstumspakete, nicht als Ersatz für organische Arbeit oder Plattformstrategie.</p>
   <p>Verwandte Pakete können sinnvoll sein, wenn du mehrere Signale gleichzeitig aufbauen möchtest. Für ${product.platform} können je nach Ziel auch Likes, Views, Kommentare oder andere Interaktionen passen. Lege nur die Produkte in den Warenkorb, die zu deinem aktuellen Profilziel passen, und achte darauf, dass alle Links korrekt eingetragen sind.</p>`;
@@ -732,7 +706,7 @@ function categoryPage(platform) {
 }
 
 function agbPage() {
-  return `<section class="product-hero"><div class="container"><h1>Allgemeine Geschäftsbedingungen</h1><p class="lead">AGB-Entwurf für FameBoost.de. Die finale Live-Version muss rechtlich geprüft und mit den vollständigen Betreiberangaben ergänzt werden.</p></div></section>
+  return `<section class="product-hero"><div class="container"><h1>Allgemeine Geschäftsbedingungen</h1><p class="lead">Allgemeine Geschäftsbedingungen für Bestellungen über FameBoost.de.</p></div></section>
   <section class="section"><div class="container"><article class="content-block legal-doc reveal">
     <p><strong>Stand:</strong> 11.06.2026</p>
     <h2>1. Anbieter und Geltungsbereich</h2>
@@ -777,24 +751,23 @@ function legalPage(title) {
   if (title === "Cookie-Hinweise") return cookiePage();
   if (title === "Widerrufsbelehrung") return widerrufPage();
   const trademarkNotice = title === "Impressum" ? `<div class="notice trademark-notice"><strong>Marken- und Logohinweis:</strong> Instagram, TikTok, YouTube, Twitch, Facebook sowie die dazugehörigen Logos und Markenkennzeichen sind Marken beziehungsweise geschützte Kennzeichen der jeweiligen Rechteinhaber. Die Darstellung auf fameboost.de dient ausschließlich der eindeutigen Plattform-Zuordnung im Shop. FameBoost.de steht in keiner Verbindung zu Meta, ByteDance, Google, Twitch oder anderen Plattformbetreibern und ist kein offizieller Partner dieser Unternehmen.</div>` : "";
-  return `<section class="product-hero"><div class="container"><h1>${title}</h1><p class="lead">Platzhalterseite für die rechtliche Live-Version von fameboost.de.</p></div></section><section class="section"><div class="container"><div class="content-block reveal"><div class="notice">Wichtig: Die finalen Rechtstexte müssen von einem Anwalt oder einem spezialisierten Generator wie Händlerbund, eRecht24, IT-Recht Kanzlei oder Trusted Shops erstellt und geprüft werden.</div>${trademarkNotice}<h2 style="margin-top:24px">${title}</h2><p>Dieser Bereich ist als struktureller Platzhalter vorbereitet. Vor dem Livegang müssen Anbieterinformationen, gesetzliche Pflichtangaben, Widerrufsregeln, Zahlungsbedingungen, Lieferbedingungen, Datenschutzprozesse und Cookie-Hinweise vollständig ergänzt und geprüft werden.</p><p>Es werden keine unbelegten Garantien, keine fremden Bewertungen und keine Aussagen zu offiziellen Plattformpartnerschaften verwendet.</p></div></div></section>`;
+  return `<section class="product-hero"><div class="container"><h1>${title}</h1><p class="lead">Platzhalterseite für die rechtliche Live-Version von fameboost.de.</p></div></section><section class="section"><div class="container"><div class="content-block reveal"><div class="notice">Wichtig: Die finalen Rechtstexte müssen von einem Anwalt oder einem spezialisierten Generator wie Händlerbund, eRecht24, IT-Recht Kanzlei oder Trusted Shops erstellt und geprüft werden.</div>${trademarkNotice}<h2 style="margin-top:24px">${title}</h2><p>Dieser Bereich ist als struktureller Platzhalter vorbereitet. Vor dem Livegang müssen Anbieterinformationen, gesetzliche Pflichtangaben, Widerrufsregeln, Zahlungsbedingungen, Datenschutzprozesse und Cookie-Hinweise vollständig ergänzt und geprüft werden.</p><p>Es werden keine unbelegten Garantien, keine fremden Bewertungen und keine Aussagen zu offiziellen Plattformpartnerschaften verwendet.</p></div></div></section>`;
 }
 
 function datenschutzPage() {
   return `<section class="product-hero"><div class="container"><h1>Datenschutzerklärung</h1><p class="lead">Datenschutzhinweise für FameBoost.de auf Basis der aktuell eingebauten Funktionen.</p></div></section>
   <section class="section"><div class="container"><article class="content-block legal-doc reveal">
     <p><strong>Stand:</strong> 11.06.2026</p>
-    <div class="notice">Diese Datenschutzerklärung muss vor dem Livegang final rechtlich geprüft und an die tatsächlich genutzten Dienstleister angepasst werden.</div>
     <h2>1. Verantwortlicher</h2>
-    <p>Oiven Games GmbH, Elmeloher Straße 17a, 27777 Ganderkesee, Deutschland. E-Mail: <a href="mailto:nevio@oivengames.com">nevio@oivengames.com</a>.</p>
+    <p>Oiven Games GmbH, Elmeloher Straße 17a, 27777 Ganderkesee, Deutschland. E-Mail: <a href="mailto:support@fameboost.de">support@fameboost.de</a>.</p>
     <h2>2. Hosting und Server-Logs</h2>
     <p>Die Website wird über ein cPanel-Hosting betrieben. Beim Aufruf werden technisch notwendige Zugriffsdaten wie IP-Adresse, Zeitpunkt, angeforderte URL, Browserinformationen und Statuscodes verarbeitet, um die Website auszuliefern und Missbrauch zu erkennen.</p>
     <h2>3. Bestellungen</h2>
     <p>Für Bestellungen verarbeiten wir Name, E-Mail-Adresse, Rechnungsadresse, Produkt, Menge, Profilname oder Link, interne Order-ID, Zahlungsstatus, Bestellstatus und technische Statusdaten. Diese Daten werden zur Vertragsabwicklung, Zahlungszuordnung, Supportbearbeitung und Betrugsprävention benötigt.</p>
     <h2>4. Zahlungsabwicklung über Stripe</h2>
     <p>Die Zahlung erfolgt über Stripe Payment Links beziehungsweise Stripe Checkout. Zahlungsdaten werden direkt bei Stripe verarbeitet. FameBoost.de speichert den Zahlungsstatus, die Zuordnung zur Bestellung und technische Webhook-Daten.</p>
-    <h2>5. Reseller-Panel</h2>
-    <p>Nach bestätigter Zahlung können produktbezogene Daten wie Service-ID, Menge und Profilname oder Link an das angebundene Reseller-Panel übermittelt werden, sofern die Bestellung nicht manuell gehalten wird.</p>
+    <h2>5. Technische Dienstleister für die Auftragsabwicklung</h2>
+    <p>Nach bestätigter Zahlung können produktbezogene Daten wie Menge und Profilname oder Link an technische Dienstleister übermittelt werden, soweit dies zur Bearbeitung der Bestellung erforderlich ist.</p>
     <h2>6. Kontaktformular und Refill-Anfragen</h2>
     <p>Bei Kontakt- und Refill-Formularen verarbeiten wir die eingegebenen Angaben, um die Anfrage zu beantworten. Zusätzlich kann eine automatische Eingangsbestätigung per E-Mail versendet werden.</p>
     <h2>7. Newsletter</h2>
@@ -814,27 +787,29 @@ function cookiePage() {
     <p>FameBoost.de nutzt aktuell keine Analytics- oder Marketing-Cookies. Der Cookie-Hinweis dient als Transparenzhinweis für technisch notwendige Funktionen.</p>
     <h2>Technisch notwendige Speicherung</h2>
     <p>Der Warenkorb, der letzte Bestellstatus, die Bestätigung des Cookie-Hinweises und die Admin-Sitzung können lokal beziehungsweise serverseitig gespeichert werden, damit die Website funktioniert.</p>
-    <h2>Spätere Erweiterungen</h2>
-    <p>Wenn später Analytics, Pixel oder Marketingdienste eingebunden werden, muss vor dem Laden dieser Dienste ein echter Consent-Banner mit Auswahlmöglichkeiten, Ablehnen-Funktion und Widerrufsmöglichkeit eingebaut werden.</p>
   </article></div></section>`;
 }
 
 function widerrufPage() {
   return `<section class="product-hero"><div class="container"><h1>Widerrufsbelehrung</h1><p class="lead">Widerrufsinformationen für digitale Leistungen auf FameBoost.de.</p></div></section>
   <section class="section"><div class="container"><article class="content-block legal-doc reveal">
-    <p><strong>Stand:</strong> 11.06.2026</p>
-    <p>Die Oiven Games GmbH, im Folgenden als FameBoost.de bezeichnet, legt die nachfolgende Widerrufsbelehrung für die Nutzung der auf dieser Plattform angebotenen Dienstleistungen fest.</p>
-    <p>Ihr Widerrufsrecht kann gemäß den gesetzlichen Regelungen für digitale Dienstleistungen mit dem Beginn der Ausführung des Auftrags erlöschen, wenn Sie ausdrücklich zugestimmt haben, dass wir mit der Ausführung des Vertrags vor Ablauf der Widerrufsfrist beginnen, und Sie Ihre Kenntnis vom möglichen Erlöschen des Widerrufsrechts bestätigt haben.</p>
+    <p><strong>Stand:</strong> 12.06.2026</p>
+    <h2>Widerrufsrecht</h2>
+    <p>Verbrauchern steht grundsätzlich ein gesetzliches Widerrufsrecht zu. Die Widerrufsfrist beträgt vierzehn Tage ab Vertragsschluss, sofern das Widerrufsrecht nicht nach den gesetzlichen Vorschriften vorzeitig erlischt.</p>
+    <h2>Digitale Dienstleistungen</h2>
+    <p>Die Oiven Games GmbH, im Folgenden als FameBoost.de bezeichnet, bietet digitale Dienstleistungen an, deren Ausführung nach erfolgreicher Bestellung und Zahlungsbestätigung beginnen kann.</p>
+    <p>Das Widerrufsrecht kann bei digitalen Dienstleistungen vor Ablauf der Widerrufsfrist erlöschen, wenn Sie ausdrücklich zugestimmt haben, dass wir mit der Ausführung des Vertrags vor Ablauf der Widerrufsfrist beginnen, und Sie bestätigt haben, dass Sie dadurch Ihr Widerrufsrecht mit Beginn der Vertragsausführung verlieren können.</p>
     <p>Eine Bestellung kann nur widerrufen werden, wenn die Durchführung des Auftrags noch nicht begonnen hat und der Auftrag sich noch nicht im internen Verarbeitungssystem befindet.</p>
     <h2>Muster-Widerrufsformular</h2>
     <div class="withdrawal-form">
-      <p>An Oiven Games GmbH<br>[Anschrift der Oiven Games GmbH ergänzen]<br>E-Mail: nevio@oivengames.com</p>
+      <p>An Oiven Games GmbH<br>Elmeloher Straße 17a<br>27777 Ganderkesee<br>Deutschland<br>E-Mail: <a href="mailto:support@fameboost.de">support@fameboost.de</a></p>
       <p>Hiermit widerrufe(n) ich/wir den von mir/uns abgeschlossenen Vertrag über den Kauf der folgenden Dienstleistung:</p>
       <p>Bestellt am:</p>
       <p>Name des/der Verbraucher(s):</p>
       <p>Anschrift des/der Verbraucher(s):</p>
       <p>Bestellnummer, falls vorhanden:</p>
       <p>Datum:</p>
+      <p>Unterschrift des/der Verbraucher(s) nur bei Mitteilung auf Papier:</p>
     </div>
   </article></div></section>`;
 }
@@ -848,7 +823,7 @@ function impressumPage() {
     <div class="imprint-address-card">
       <img class="imprint-address-image" src="/assets/img/imprint.png" alt="Oiven Games GmbH, Elmeloher Straße 17a, 27777 Ganderkesee, Deutschland" loading="lazy">
     </div>
-    <p>E-Mail: <a href="mailto:nevio@oivengames.com">nevio@oivengames.com</a></p>
+    <p>E-Mail: <a href="mailto:support@fameboost.de">support@fameboost.de</a></p>
 
     <h2>Vertreten durch</h2>
     <p>Geschäftsführer: Nevio Alexander Vogt</p>
@@ -1656,7 +1631,7 @@ async function submitContactForm(form) {
     if (!response.ok || !result.ok) throw new Error(result.message || "Die Nachricht konnte nicht gesendet werden.");
     form.innerHTML = `<div class="notice">Danke, deine Anfrage wurde gesendet. Du erhältst gleich eine Bestätigung per E-Mail.</div>`;
   } catch (error) {
-    if (status) status.textContent = `${error.message} Bitte versuche es später erneut oder schreibe direkt an nevio@oivengames.com.`;
+    if (status) status.textContent = `${error.message} Bitte versuche es später erneut oder schreibe direkt an support@fameboost.de.`;
     if (button) {
       button.disabled = false;
       button.textContent = originalText;

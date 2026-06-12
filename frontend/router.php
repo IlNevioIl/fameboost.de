@@ -9,6 +9,12 @@ if (str_contains($path, '/_private/')) {
     return true;
 }
 
+if (in_array(trim($path, '/'), ['lieferbedingungen', 'zahlungsarten'], true)) {
+    http_response_code(410);
+    echo 'Gone';
+    return true;
+}
+
 if ($path !== '/' && is_file($file)) {
     return false;
 }

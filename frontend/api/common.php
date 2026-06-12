@@ -91,7 +91,7 @@ function fb_rate_limit(string $scope, int $limit, int $windowSeconds): void
 
     if (!empty($result['blocked'])) {
         header('Retry-After: ' . max(1, (int)$result['reset_at'] - $now));
-        fb_json_response(['ok' => false, 'message' => 'Zu viele Anfragen. Bitte versuche es später erneut.'], 429);
+        fb_json_response(['ok' => false, 'message' => 'Zu viele Anfragen. Bitte versuche es spÃ¤ter erneut.'], 429);
     }
 }
 
@@ -775,7 +775,7 @@ function fb_save_json_file(string $file, array $data): void
 
     $handle = fopen($file, 'c+');
     if (!$handle) {
-        throw new RuntimeException('Storage konnte nicht geöffnet werden.');
+        throw new RuntimeException('Storage konnte nicht geÃ¶ffnet werden.');
     }
 
     flock($handle, LOCK_EX);
@@ -796,7 +796,7 @@ function fb_mutate_json_file(string $file, callable $callback, array $fallback =
 
     $handle = fopen($file, 'c+');
     if (!$handle) {
-        throw new RuntimeException('Storage konnte nicht geöffnet werden.');
+        throw new RuntimeException('Storage konnte nicht geÃ¶ffnet werden.');
     }
 
     flock($handle, LOCK_EX);
@@ -841,8 +841,8 @@ function fb_public_order(array $order): array
     $paymentDone = ($order['payment_status'] ?? '') === 'paid' || in_array($order['status'], ['paid', 'fulfillment_hold', 'sent_to_reseller', 'in_progress', 'completed'], true);
     $steps = [
         ['key' => 'created', 'label' => 'Bestellung vorbereitet', 'state' => 'done'],
-        ['key' => 'payment', 'label' => 'Zahlung über Stripe', 'state' => $paymentDone ? 'done' : 'active'],
-        ['key' => 'review', 'label' => 'Prüfung und Zuordnung', 'state' => in_array($order['status'], ['needs_review', 'manual_payment_check'], true) ? 'active' : (in_array($order['status'], ['pending_external_payment', 'payment_link_opened'], true) ? 'pending' : 'done')],
+        ['key' => 'payment', 'label' => 'Zahlung Ã¼ber Stripe', 'state' => $paymentDone ? 'done' : 'active'],
+        ['key' => 'review', 'label' => 'PrÃ¼fung und Zuordnung', 'state' => in_array($order['status'], ['needs_review', 'manual_payment_check'], true) ? 'active' : (in_array($order['status'], ['pending_external_payment', 'payment_link_opened'], true) ? 'pending' : 'done')],
         ['key' => 'fulfillment', 'label' => 'Bearbeitung', 'state' => in_array($order['status'], ['fulfillment_hold', 'sent_to_reseller', 'in_progress'], true) ? 'active' : ($order['status'] === 'completed' ? 'done' : 'pending')],
         ['key' => 'done', 'label' => 'Abgeschlossen', 'state' => $order['status'] === 'completed' ? 'done' : 'pending'],
     ];
@@ -871,17 +871,17 @@ function fb_status_label(string $status): string
     $labels = [
         'pending_external_payment' => 'Wartet auf externe Zahlung',
         'payment_link_opened' => 'Zu Stripe weitergeleitet',
-        'manual_payment_check' => 'Zahlung wird geprüft',
+        'manual_payment_check' => 'Zahlung wird geprÃ¼ft',
         'payment_failed' => 'Zahlung fehlgeschlagen',
-        'paid' => 'Zahlung bestätigt',
+        'paid' => 'Zahlung bestÃ¤tigt',
         'fulfillment_queued' => 'Bearbeitung vorbereitet',
         'fulfillment_hold' => 'Wartet auf Freigabe',
-        'sent_to_reseller' => 'An Anbieter übergeben',
-        'in_progress' => 'Bearbeitung läuft',
+        'sent_to_reseller' => 'Bearbeitung gestartet',
+        'in_progress' => 'Bearbeitung lÃ¤uft',
         'partially_completed' => 'Teilweise abgeschlossen',
         'completed' => 'Abgeschlossen',
         'refill_requested' => 'Refill angefragt',
-        'needs_review' => 'Manuelle Prüfung',
+        'needs_review' => 'Manuelle PrÃ¼fung',
         'canceled' => 'Storniert',
         'refunded' => 'Erstattet',
     ];
@@ -913,19 +913,19 @@ function fb_status_progress(string $status): int
 function fb_status_message(string $status): string
 {
     $messages = [
-        'pending_external_payment' => 'Deine Bestellung wurde vorbereitet. Schließe die Zahlung auf der sicheren Stripe-Seite ab.',
-        'payment_link_opened' => 'Du wurdest zu Stripe weitergeleitet. Nach der Zahlung wird die Bestellung geprüft.',
-        'manual_payment_check' => 'Wir prüfen die Zahlung und ordnen die Bestellung zu.',
-        'payment_failed' => 'Die Zahlung wurde nicht bestätigt. Bitte starte den Kauf erneut oder kontaktiere den Support.',
-        'paid' => 'Die Zahlung wurde bestätigt. Die Bearbeitung kann vorbereitet werden.',
-        'fulfillment_queued' => 'Dein Auftrag wartet auf die Übergabe an den Anbieter.',
+        'pending_external_payment' => 'Deine Bestellung wurde vorbereitet. SchlieÃŸe die Zahlung auf der sicheren Stripe-Seite ab.',
+        'payment_link_opened' => 'Du wurdest zu Stripe weitergeleitet. Nach der Zahlung wird die Bestellung geprÃ¼ft.',
+        'manual_payment_check' => 'Wir prÃ¼fen die Zahlung und ordnen die Bestellung zu.',
+        'payment_failed' => 'Die Zahlung wurde nicht bestÃ¤tigt. Bitte starte den Kauf erneut oder kontaktiere den Support.',
+        'paid' => 'Die Zahlung wurde bestÃ¤tigt. Die Bearbeitung kann vorbereitet werden.',
+        'fulfillment_queued' => 'Dein Auftrag ist eingeplant und wird für die Bearbeitung vorbereitet.',
         'fulfillment_hold' => 'Deine Bestellung ist bezahlt und vorgemerkt. Die Bearbeitung wird innerhalb von 24 Stunden freigegeben.',
-        'sent_to_reseller' => 'Der Auftrag wurde an den Anbieter übergeben.',
-        'in_progress' => 'Die Bearbeitung läuft. Bitte ändere den Profilnamen nicht.',
-        'partially_completed' => 'Der Auftrag ist teilweise abgeschlossen und wird geprüft.',
-        'completed' => 'Der Auftrag wurde abgeschlossen. Danke für deine Bestellung.',
-        'refill_requested' => 'Eine Refill-Prüfung wurde vorgemerkt.',
-        'needs_review' => 'Die Bestellung benötigt eine manuelle Prüfung.',
+        'sent_to_reseller' => 'Die Bearbeitung deiner Bestellung wurde gestartet.',
+        'in_progress' => 'Die Bearbeitung lÃ¤uft. Bitte Ã¤ndere den Profilnamen nicht.',
+        'partially_completed' => 'Der Auftrag ist teilweise abgeschlossen und wird geprÃ¼ft.',
+        'completed' => 'Der Auftrag wurde abgeschlossen. Danke fÃ¼r deine Bestellung.',
+        'refill_requested' => 'Eine Refill-PrÃ¼fung wurde vorgemerkt.',
+        'needs_review' => 'Die Bestellung benÃ¶tigt eine manuelle PrÃ¼fung.',
     ];
     return $messages[$status] ?? 'Status wird aktualisiert.';
 }
@@ -958,7 +958,7 @@ function fb_hash_token(string $token): string
 
 function fb_money(int $cents): string
 {
-    return number_format($cents / 100, 2, ',', '.') . ' €';
+    return number_format($cents / 100, 2, ',', '.') . ' â‚¬';
 }
 
 function fb_money_float(float $amount, string $currency = ''): string
@@ -1007,10 +1007,10 @@ function fb_validate_target(string $target): string
 {
     $target = trim($target);
     if ($target === '' || strlen($target) > 300) {
-        throw new InvalidArgumentException('Bitte gib einen gültigen Profilnamen oder Link ein.');
+        throw new InvalidArgumentException('Bitte gib einen gÃ¼ltigen Profilnamen oder Link ein.');
     }
     if (preg_match('/[\r\n]/', $target)) {
-        throw new InvalidArgumentException('Der Profilname oder Link enthält ungültige Zeichen.');
+        throw new InvalidArgumentException('Der Profilname oder Link enthÃ¤lt ungÃ¼ltige Zeichen.');
     }
     return $target;
 }
@@ -1019,24 +1019,24 @@ function fb_catalog_item(string $slug, int $quantity): array
 {
     $catalog = fb_catalog();
     if (!isset($catalog[$slug])) {
-        throw new InvalidArgumentException('Dieses Produkt ist aktuell nicht verfügbar.');
+        throw new InvalidArgumentException('Dieses Produkt ist aktuell ausverkauft und sollte in ein paar Stunden wieder verfügbar sein.');
     }
     $limits = fb_reseller_quantity_limits($slug);
     if (($limits['max'] ?? null) !== null && $quantity > (int)$limits['max']) {
-        throw new InvalidArgumentException('Die gewählte Menge ist für dieses Produkt aktuell zu hoch. Maximal möglich sind ' . number_format((int)$limits['max'], 0, ',', '.') . '.');
+        throw new InvalidArgumentException('Die gewÃ¤hlte Menge ist fÃ¼r dieses Produkt aktuell zu hoch. Maximal mÃ¶glich sind ' . number_format((int)$limits['max'], 0, ',', '.') . '.');
     }
     if (!isset($catalog[$slug]['items'][$quantity])) {
-        throw new InvalidArgumentException('Für diese Menge ist noch kein Stripe Payment Link hinterlegt.');
+        throw new InvalidArgumentException('Diese Menge ist aktuell ausverkauft und sollte in ein paar Stunden wieder verfügbar sein.');
     }
     $item = $catalog[$slug]['items'][$quantity];
     $mapping = fb_reseller_service_mapping($slug, $quantity);
     if (!$mapping || empty($mapping['service_id'])) {
-        throw new InvalidArgumentException('Dieses Produkt ist aktuell noch nicht kaufbar, weil im Admin kein Reseller-Service zugewiesen ist.');
+        throw new InvalidArgumentException('Dieses Produkt ist aktuell ausverkauft und sollte in ein paar Stunden wieder verfügbar sein.');
     }
     if ($mapping && !empty($mapping['service_id'])) {
         $healthStatus = fb_mapping_health_status($slug, $quantity, $mapping);
         if ($healthStatus && ($healthStatus['available'] ?? true) === false) {
-            throw new InvalidArgumentException('Dieses Produkt ist aktuell kurzzeitig nicht verfügbar. Bitte wähle später erneut oder kontaktiere den Support.');
+            throw new InvalidArgumentException('Dieses Produkt ist aktuell ausverkauft und sollte in ein paar Stunden wieder verfügbar sein.');
         }
         $item['reseller_service_id'] = (string)$mapping['service_id'];
         $item['reseller_service_name'] = $mapping['service_name'] ?? null;
@@ -1147,17 +1147,17 @@ function fb_update_order_from_stripe_session(array $session, string $eventType):
             } elseif ($currency !== strtolower((string)($order['currency'] ?? 'eur'))) {
                 $order['status'] = 'needs_review';
                 $order['payment_status'] = 'currency_mismatch';
-                $order = fb_append_history($order, 'needs_review', 'Stripe-Währung weicht von der Bestellung ab.');
+                $order = fb_append_history($order, 'needs_review', 'Stripe-WÃ¤hrung weicht von der Bestellung ab.');
             } elseif ($eventType === 'checkout.session.completed' && $paymentStatus === 'paid') {
                 $order['status'] = 'paid';
                 $order['payment_status'] = 'paid';
                 $order['paid_at'] = fb_now();
-                $order = fb_append_history($order, 'paid', 'Stripe Webhook hat die Zahlung bestätigt.');
+                $order = fb_append_history($order, 'paid', 'Stripe Webhook hat die Zahlung bestÃ¤tigt.');
             } elseif ($eventType === 'checkout.session.async_payment_succeeded') {
                 $order['status'] = 'paid';
                 $order['payment_status'] = 'paid';
                 $order['paid_at'] = fb_now();
-                $order = fb_append_history($order, 'paid', 'Asynchrone Stripe-Zahlung wurde bestätigt.');
+                $order = fb_append_history($order, 'paid', 'Asynchrone Stripe-Zahlung wurde bestÃ¤tigt.');
             } elseif ($eventType === 'checkout.session.async_payment_failed') {
                 $order['status'] = 'payment_failed';
                 $order['payment_status'] = 'failed';
@@ -1165,7 +1165,7 @@ function fb_update_order_from_stripe_session(array $session, string $eventType):
             } else {
                 $order['status'] = 'manual_payment_check';
                 $order['payment_status'] = $paymentStatus ?: 'manual_payment_check';
-                $order = fb_append_history($order, 'manual_payment_check', 'Stripe Webhook erhalten, Zahlung aber noch nicht final bestätigt.');
+                $order = fb_append_history($order, 'manual_payment_check', 'Stripe Webhook erhalten, Zahlung aber noch nicht final bestÃ¤tigt.');
             }
 
             $updated = $order;
@@ -1192,7 +1192,7 @@ function fb_call_reseller_add(array $order, bool $skipBalanceCheck = false): arr
         return ['ok' => false, 'reason' => 'missing_api_key', 'message' => 'Reseller-API-Key fehlt.'];
     }
     if ($serviceId === '') {
-        return ['ok' => false, 'reason' => 'missing_service_id', 'message' => 'Reseller-Service-ID fehlt für dieses Produkt.'];
+        return ['ok' => false, 'reason' => 'missing_service_id', 'message' => 'Reseller-Service-ID fehlt fÃ¼r dieses Produkt.'];
     }
     if (!empty($item['reseller_order_id'])) {
         return ['ok' => true, 'already_sent' => true, 'order_id' => $item['reseller_order_id']];
@@ -1203,7 +1203,7 @@ function fb_call_reseller_add(array $order, bool $skipBalanceCheck = false): arr
     if (!$skipBalanceCheck) {
         $balance = fb_call_reseller_balance();
         if (empty($balance['ok'])) {
-            return ['ok' => false, 'reason' => 'balance_check_failed', 'message' => $balance['message'] ?? 'Reseller-Balance konnte nicht geprüft werden.', 'balance' => $balance];
+            return ['ok' => false, 'reason' => 'balance_check_failed', 'message' => $balance['message'] ?? 'Reseller-Balance konnte nicht geprÃ¼ft werden.', 'balance' => $balance];
         }
         if ((float)$balance['balance'] < $minBalance) {
             return [
@@ -1220,7 +1220,7 @@ function fb_call_reseller_add(array $order, bool $skipBalanceCheck = false): arr
             return [
                 'ok' => false,
                 'reason' => 'cost_hold',
-                'message' => 'Reseller-Kosten liegen über dem Freigabewert oder konnten nicht berechnet werden. Auftrag wurde nicht gesendet.',
+                'message' => 'Reseller-Kosten liegen Ã¼ber dem Freigabewert oder konnten nicht berechnet werden. Auftrag wurde nicht gesendet.',
                 'estimated_cost' => $estimatedCost,
                 'manual_threshold' => $manualThreshold,
                 'balance' => $balance,
@@ -1252,7 +1252,7 @@ function fb_call_reseller_add(array $order, bool $skipBalanceCheck = false): arr
         return ['ok' => true, 'order_id' => (string)$json['order'], 'response' => $json];
     }
 
-    return ['ok' => false, 'reason' => 'reseller_error', 'message' => $json['error'] ?? 'Reseller hat keine Order-ID zurückgegeben.', 'response' => $json];
+    return ['ok' => false, 'reason' => 'reseller_error', 'message' => $json['error'] ?? 'Reseller hat keine Order-ID zurÃ¼ckgegeben.', 'response' => $json];
 }
 
 function fb_notify_customer_balance_hold(array $order): bool
@@ -1273,7 +1273,7 @@ function fb_notify_customer_balance_hold(array $order): bool
     $body = <<<TEXT
 Hallo {$name},
 
-vielen Dank für deine Bestellung bei FameBoost.de.
+vielen Dank fÃ¼r deine Bestellung bei FameBoost.de.
 
 Deine Zahlung wurde erfolgreich erfasst. Deine Bestellung ist bei uns vorgemerkt und wird innerhalb von 24 Stunden bearbeitet.
 
@@ -1282,11 +1282,11 @@ Bestellnummer: {$orderNumber}
 Produkt: {$product}
 Profil/Link: {$target}
 
-Wichtig: Bitte ändere während der Bearbeitung deinen Profilnamen nicht und stelle sicher, dass dein Profil öffentlich erreichbar ist.
+Wichtig: Bitte Ã¤ndere wÃ¤hrend der Bearbeitung deinen Profilnamen nicht und stelle sicher, dass dein Profil Ã¶ffentlich erreichbar ist.
 
-Bei Fragen kannst du jederzeit über unsere Kontaktseite eine Nachricht senden.
+Bei Fragen kannst du jederzeit Ã¼ber unsere Kontaktseite eine Nachricht senden.
 
-Viele Grüße
+Viele GrÃ¼ÃŸe
 Dein FameBoost.de Team
 TEXT;
 
@@ -1349,7 +1349,7 @@ function fb_notify_admin_hold(array $order, array $hold): bool
     $threshold = $hold['manual_threshold'] ?? ($config['reseller_manual_review_threshold'] ?? 5.0);
     $balance = $hold['balance']['balance'] ?? null;
     $balanceCurrency = (string)($hold['balance']['currency'] ?? '');
-    $balanceText = is_numeric($balance) ? fb_money_float((float)$balance, $balanceCurrency) : 'nicht verfügbar';
+    $balanceText = is_numeric($balance) ? fb_money_float((float)$balance, $balanceCurrency) : 'nicht verfÃ¼gbar';
     $reason = (string)($hold['reason'] ?? 'hold');
 
     $subject = 'FameBoost Hold: ' . $orderNumber;
@@ -1373,12 +1373,12 @@ Reseller:
 Service-ID: {$item['reseller_service_id']}
 Service-Name: {$item['reseller_service_name']}
 Rate pro 1000: {$item['reseller_rate']}
-Geschätzte Reseller-Kosten: {$costText}
+GeschÃ¤tzte Reseller-Kosten: {$costText}
 Manueller Freigabewert: {$threshold}
 Letzte Reseller-Balance: {$balanceText}
 
 Aktion:
-Balance/Bestellung prüfen und danach im Admin freigeben.
+Balance/Bestellung prÃ¼fen und danach im Admin freigeben.
 TEXT;
 
     return fb_send_text_mail($to, $subject, $body);

@@ -1,0 +1,19 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" role="img" aria-labelledby="title desc">
+  <title id="title">FameBoost.de Logo</title>
+  <desc id="desc">Quadratisches FameBoost.de Logo fuer Suchmaschinen und strukturierte Daten.</desc>
+  <defs>
+    <linearGradient id="bg" x1="72" y1="440" x2="440" y2="72" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#22d6b5"/>
+      <stop offset="0.5" stop-color="#22a7ff"/>
+      <stop offset="1" stop-color="#8057ff"/>
+    </linearGradient>
+    <filter id="shadow" x="-20%" y="-20%" width="140%" height="140%">
+      <feDropShadow dx="0" dy="24" stdDeviation="22" flood-color="#000000" flood-opacity="0.28"/>
+    </filter>
+  </defs>
+  <rect width="512" height="512" rx="118" fill="#07111f"/>
+  <rect x="42" y="42" width="428" height="428" rx="104" fill="url(#bg)" filter="url(#shadow)"/>
+  <path d="M160 380V142h188v62H240v54h94v61h-94v61h-80Z" fill="#06111f"/>
+  <path d="M300 372 412 260h-66v-78h142v142h-78v-64L300 372Z" fill="#ffffff"/>
+  <circle cx="154" cy="140" r="28" fill="#ffffff" opacity="0.9"/>
+</svg>

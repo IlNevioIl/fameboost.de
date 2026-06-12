@@ -26,9 +26,9 @@ try {
         $available = $hasMapping && (!$healthStatus || ($healthStatus['available'] ?? true) !== false);
         $availabilityMessage = '';
         if (!$hasMapping) {
-            $availabilityMessage = 'Dieses Produkt ist aktuell noch nicht kaufbar, weil im Admin kein Reseller-Service zugewiesen ist.';
+            $availabilityMessage = 'Dieses Produkt ist aktuell ausverkauft und sollte in ein paar Stunden wieder verfügbar sein.';
         } elseif (!$available) {
-            $availabilityMessage = 'Dieses Produkt ist aktuell kurzzeitig nicht verfügbar, weil der zugewiesene Anbieter-Service geprüft werden muss.';
+            $availabilityMessage = 'Dieses Produkt ist aktuell ausverkauft und sollte in ein paar Stunden wieder verfügbar sein.';
         }
 
         $limits[$slug] = [
