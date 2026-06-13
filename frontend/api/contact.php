@@ -5,7 +5,7 @@ require __DIR__ . '/common.php';
 
 header('Content-Type: application/json; charset=UTF-8');
 
-const MAIL_TO = 'nevio@oivengames.com';
+const MAIL_TO = 'nevio.vogt@gmail.com';
 const MAIL_FROM = 'noreply@fameboost.de';
 const MAIL_FROM_NAME = 'FameBoost.de';
 

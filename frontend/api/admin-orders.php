@@ -9,6 +9,25 @@ fb_require_admin_auth();
 $config = fb_config();
 $rawOrders = fb_orders();
 $holdCount = count(array_filter($rawOrders, fn(array $order): bool => ($order['status'] ?? '') === 'fulfillment_hold'));
+usort($rawOrders, function (array $a, array $b): int {
+    $rank = function (array $order): int {
+        if (($order['priority'] ?? '') === 'priority_booked' || (($order['status'] ?? '') === 'fulfillment_hold' && ($order['hold_reason'] ?? '') === 'manual_approval_required')) {
+            return 0;
+        }
+        if (($order['status'] ?? '') === 'fulfillment_hold') {
+            return 1;
+        }
+        if (in_array(($order['status'] ?? ''), ['needs_review', 'manual_payment_check'], true)) {
+            return 2;
+        }
+        return 3;
+    };
+    $rankCompare = $rank($a) <=> $rank($b);
+    if ($rankCompare !== 0) {
+        return $rankCompare;
+    }
+    return strcmp((string)($b['created_at'] ?? ''), (string)($a['created_at'] ?? ''));
+});
 $balance = fb_load_json_file(fb_data_path('reseller_balance.json'), []);
 $liveBalance = fb_call_reseller_balance();
 if (!empty($liveBalance['ok'])) {
@@ -68,6 +87,8 @@ $orders = array_map(function (array $order): array {
         'reseller_start_count' => $item['reseller_start_count'] ?? null,
         'reseller_remains' => $item['reseller_remains'] ?? null,
         'hold_reason' => $order['hold_reason'] ?? '',
+        'priority' => $order['priority'] ?? '',
+        'priority_label' => $order['priority_label'] ?? '',
         'hold_started_at' => $order['hold_started_at'] ?? null,
         'hold_email_sent_at' => $order['hold_email_sent_at'] ?? null,
         'last_reseller_balance' => $order['last_reseller_balance'] ?? null,

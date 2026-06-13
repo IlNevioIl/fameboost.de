@@ -10,12 +10,12 @@ try {
     $input = fb_read_input();
     $code = fb_validate_coupon_code_input((string)($input['code'] ?? $input['coupon_code'] ?? ''));
     if (empty(fb_config()['stripe_promotion_codes_enabled'])) {
-        throw new InvalidArgumentException('Rabattcodes sind aktuell nicht verfÃ¼gbar.');
+        throw new InvalidArgumentException('Rabattcodes sind aktuell nicht verfügbar.');
     }
 
     $promotion = fb_stripe_find_promotion_code($code);
     if (!$promotion) {
-        throw new InvalidArgumentException('Dieser Rabattcode ist ungÃ¼ltig oder nicht mehr aktiv.');
+        throw new InvalidArgumentException('Dieser Rabattcode ist ungültig oder nicht mehr aktiv.');
     }
 
     $coupon = is_array($promotion['coupon'] ?? null) ? $promotion['coupon'] : [];
@@ -36,5 +36,5 @@ try {
     fb_json_response(['ok' => false, 'message' => $error->getMessage()], 422);
 } catch (Throwable $error) {
     error_log('validate-promotion-code failed: ' . $error->getMessage() . "\n" . $error->getTraceAsString() . "\n", 3, fb_data_path('errors.log'));
-    fb_json_response(['ok' => false, 'message' => 'Rabattcode konnte nicht geprÃ¼ft werden.'], 500);
+    fb_json_response(['ok' => false, 'message' => 'Rabattcode konnte nicht geprüft werden.'], 500);
 }

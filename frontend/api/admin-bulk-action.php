@@ -56,10 +56,10 @@ try {
         return ['data' => $data];
     }, ['orders' => []]);
 
-    fb_json_response(['ok' => true, 'message' => 'Hold-Freigabe geprÃ¼ft.', 'stats' => $stats]);
+    fb_json_response(['ok' => true, 'message' => 'Hold-Freigabe geprüft.', 'stats' => $stats]);
 } catch (InvalidArgumentException $error) {
     fb_json_response(['ok' => false, 'message' => $error->getMessage()], 422);
 } catch (Throwable $error) {
     error_log('admin-bulk-action failed: ' . $error->getMessage() . "\n" . $error->getTraceAsString() . "\n", 3, fb_data_path('errors.log'));
-    fb_json_response(['ok' => false, 'message' => 'Bulk-Aktion konnte nicht ausgefÃ¼hrt werden.'], 500);
+    fb_json_response(['ok' => false, 'message' => 'Bulk-Aktion konnte nicht ausgeführt werden.'], 500);
 }

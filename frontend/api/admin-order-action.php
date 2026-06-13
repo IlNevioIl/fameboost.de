@@ -32,7 +32,7 @@ try {
                 }
                 $order['status'] = $status;
                 $order['payment_status'] = in_array($status, ['paid', 'fulfillment_queued', 'fulfillment_hold', 'sent_to_reseller', 'in_progress', 'completed'], true) ? 'paid' : ($order['payment_status'] ?? 'pending_external_payment');
-                $order = fb_append_history($order, $status, 'Status manuell im Admin geÃ¤ndert.');
+                $order = fb_append_history($order, $status, 'Status manuell im Admin geändert.');
             } elseif ($action === 'save_counts') {
                 $baseline = $input['baseline_count'] ?? null;
                 $completed = $input['completed_count'] ?? null;
@@ -42,11 +42,11 @@ try {
                     $expected = (int)$baseline + (int)$item['quantity'];
                     $order['items'][0]['lost_count'] = max(0, $expected - (int)$completed);
                 }
-                $order = fb_append_history($order, $order['status'], 'ZÃ¤hlerstÃ¤nde im Admin gespeichert.');
+                $order = fb_append_history($order, $order['status'], 'Zählerstände im Admin gespeichert.');
             } elseif ($action === 'request_refill') {
                 $order['status'] = 'refill_requested';
                 $order['items'][0]['refill_requested_at'] = fb_now();
-                $order = fb_append_history($order, 'refill_requested', 'Refill-PrÃ¼fung im Admin vorgemerkt.');
+                $order = fb_append_history($order, 'refill_requested', 'Refill-Prüfung im Admin vorgemerkt.');
             } elseif ($action === 'send_reseller' || $action === 'release_hold') {
                 $reseller = fb_call_reseller_add($order, $action === 'release_hold');
                 if (!empty($reseller['ok'])) {

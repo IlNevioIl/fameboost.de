@@ -12,6 +12,5 @@ return [
     'speed_options' => [
         'standard' => ['label' => 'Standard', 'price_cents' => 0],
         'fast' => ['label' => 'Schnellere Bearbeitung', 'price_cents' => 399],
-        'custom' => ['label' => 'Individuelle Geschwindigkeit', 'price_cents' => 399],
     ],
 ];

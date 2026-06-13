@@ -17,12 +17,11 @@ $config = [
     'speed_options' => [
         'standard' => ['label' => 'Standard', 'price_cents' => 0],
         'fast' => ['label' => 'Schnellere Bearbeitung', 'price_cents' => 399],
-        'custom' => ['label' => 'Individuelle Geschwindigkeit', 'price_cents' => 399],
     ],
     'mail_from' => 'noreply@fameboost.de',
     'mail_from_name' => 'FameBoost.de',
     'admin_email' => 'nevio.vogt@gmail.com',
-    'admin_notice' => 'Stripe Checkout Sessions sind vorbereitet. Automatische Weitergabe startet nur bei bezahlten Bestellungen und gÃ¼ltigem Reseller-Mapping.',
+    'admin_notice' => 'Stripe Checkout Sessions sind vorbereitet. Bezahlte Bestellungen warten auf manuelle Freigabe im Admin-Panel.',
 ];
 
 $local = __DIR__ . '/config.local.php';

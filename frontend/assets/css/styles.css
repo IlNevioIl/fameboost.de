@@ -1273,6 +1273,12 @@ main > .section:nth-of-type(even):not(.section-dark) {
   font-weight: 900;
 }
 
+.priority-booked-badge {
+  background: #fff7ed;
+  color: #9a3412;
+  border: 1px solid rgba(249, 115, 22, 0.28);
+}
+
 .price {
   margin-top: auto;
   font-size: 22px;
@@ -1608,6 +1614,113 @@ main > .section:nth-of-type(even):not(.section-dark) {
 .field small {
   color: #455872;
   line-height: 1.45;
+}
+
+.smart-target-field {
+  gap: 10px;
+}
+
+.target-preview {
+  min-height: 82px;
+}
+
+.target-card {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  gap: 12px;
+  align-items: center;
+  padding: 13px;
+  border-radius: 16px;
+  border: 1px solid rgba(15, 23, 42, 0.12);
+  background: linear-gradient(135deg, #ffffff, #f8fbff);
+  box-shadow: 0 12px 32px rgba(15, 23, 42, 0.08);
+}
+
+.target-card-ready {
+  border-color: color-mix(in srgb, var(--platform-2, var(--teal)) 34%, rgba(15, 23, 42, 0.12));
+  background: linear-gradient(135deg, color-mix(in srgb, var(--platform-2, var(--teal)) 10%, #ffffff), #ffffff);
+}
+
+.target-card-warning {
+  border-color: rgba(245, 158, 11, 0.46);
+  background: linear-gradient(135deg, #fffbeb, #ffffff);
+}
+
+.target-card-empty {
+  background: #f8fafc;
+  color: #475569;
+}
+
+.target-avatar {
+  width: 46px;
+  height: 46px;
+  display: grid;
+  place-items: center;
+  border-radius: 14px;
+  background: #0f172a;
+  color: #ffffff;
+  font-weight: 950;
+  overflow: hidden;
+}
+
+.target-avatar .platform-logo {
+  width: 100%;
+  height: 100%;
+  border-radius: 14px;
+}
+
+.target-copy {
+  min-width: 0;
+  display: grid;
+  gap: 3px;
+}
+
+.target-copy span {
+  color: #64748b;
+  font-size: 12px;
+  font-weight: 850;
+  text-transform: uppercase;
+  letter-spacing: .04em;
+}
+
+.target-copy strong {
+  color: #0f172a;
+  font-size: 15px;
+  overflow-wrap: anywhere;
+}
+
+.target-copy small {
+  color: #475569;
+}
+
+.target-copy code {
+  display: block;
+  width: fit-content;
+  max-width: 100%;
+  margin-top: 2px;
+  padding: 5px 7px;
+  border-radius: 9px;
+  background: rgba(15, 23, 42, 0.07);
+  color: #172033;
+  font-size: 12px;
+  overflow-wrap: anywhere;
+}
+
+.target-use {
+  appearance: none;
+  border: 0;
+  border-radius: 999px;
+  padding: 9px 12px;
+  background: linear-gradient(135deg, var(--platform-1, var(--accent)), var(--platform-2, var(--teal)));
+  color: #ffffff;
+  font-weight: 900;
+  cursor: pointer;
+  white-space: nowrap;
+  box-shadow: 0 10px 22px color-mix(in srgb, var(--platform-2, var(--teal)) 24%, transparent);
+}
+
+.target-use:hover {
+  transform: translateY(-1px);
 }
 
 .form-status {
@@ -1949,9 +2062,7 @@ textarea:focus {
 }
 
 .payment-row {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 6px;
+  display: block;
   margin-top: 14px;
 }
 
@@ -1963,6 +2074,51 @@ textarea:focus {
   font-size: 12px;
   font-weight: 900;
   color: #17263c;
+}
+
+.payment-logo-strip {
+  display: block;
+  width: 100%;
+  max-width: 560px;
+  height: auto;
+  aspect-ratio: 1024 / 72;
+  object-fit: contain;
+  border-radius: 14px;
+  background: #ffffff;
+  box-shadow: 0 14px 32px rgba(15, 23, 42, .10);
+}
+
+.payment-logo-strip-compact {
+  max-width: 430px;
+}
+
+.payment-logo-strip-small {
+  max-width: 360px;
+  margin: 12px auto 0;
+  box-shadow: 0 10px 24px rgba(15, 23, 42, .08);
+}
+
+.payment-logo-strip-hero {
+  max-width: 590px;
+  margin: 18px 0 20px;
+  box-shadow: 0 20px 50px rgba(2, 6, 23, .18);
+}
+
+.payment-logo-strip-footer {
+  max-width: 420px;
+  box-shadow: 0 12px 30px rgba(0, 0, 0, .18);
+}
+
+.payment-hero-logos,
+.summary-payment-strip,
+.footer-payment-logos {
+  display: flex;
+  align-items: center;
+}
+
+.footer-payment-logos {
+  justify-content: flex-end;
+  min-width: min(420px, 100%);
 }
 
 .mini-trust {
@@ -3542,6 +3698,7 @@ textarea:focus {
 .payment-logo-g-pay { color: #1a73e8; }
 .payment-logo-sofort { color: #ef4444; }
 .payment-logo-stripe { color: #635bff; }
+.payment-logo-amex { color: #2e77bb; }
 
 .payment-submit {
   width: 100%;
@@ -3634,8 +3791,18 @@ textarea:focus {
   .coupon-input-row,
   .payment-summary-item,
   .order-item-row,
-  .admin-item-row {
+  .admin-item-row,
+  .target-card {
     grid-template-columns: 1fr;
+  }
+
+  .target-avatar {
+    width: 42px;
+    height: 42px;
+  }
+
+  .target-use {
+    width: 100%;
   }
 
   .payment-method-card {
@@ -3644,6 +3811,19 @@ textarea:focus {
   }
 
   .payment-icons {
+    justify-content: flex-start;
+  }
+
+  .payment-logo-strip,
+  .payment-logo-strip-compact,
+  .payment-logo-strip-small,
+  .payment-logo-strip-hero,
+  .payment-logo-strip-footer {
+    max-width: 100%;
+    border-radius: 12px;
+  }
+
+  .footer-payment-logos {
     justify-content: flex-start;
   }
 

@@ -91,7 +91,7 @@ function fb_rate_limit(string $scope, int $limit, int $windowSeconds): void
 
     if (!empty($result['blocked'])) {
         header('Retry-After: ' . max(1, (int)$result['reset_at'] - $now));
-        fb_json_response(['ok' => false, 'message' => 'Zu viele Anfragen. Bitte versuche es spÃƒÂ¤ter erneut.'], 429);
+        fb_json_response(['ok' => false, 'message' => 'Zu viele Anfragen. Bitte versuche es später erneut.'], 429);
     }
 }
 
@@ -337,7 +337,7 @@ function fb_stripe_request(string $method, string $path, array $params = []): ar
     }
 
     if (!function_exists('curl_init')) {
-        return ['ok' => false, 'reason' => 'missing_curl', 'message' => 'cURL ist auf dem Server nicht verfÃ¼gbar.'];
+        return ['ok' => false, 'reason' => 'missing_curl', 'message' => 'cURL ist auf dem Server nicht verfügbar.'];
     }
 
     $ch = curl_init($url);
@@ -371,7 +371,7 @@ function fb_stripe_request(string $method, string $path, array $params = []): ar
 
     $json = json_decode((string)$raw, true);
     if (!is_array($json)) {
-        return ['ok' => false, 'reason' => 'invalid_response', 'message' => 'Stripe hat keine gÃ¼ltige JSON-Antwort geliefert.', 'raw' => substr((string)$raw, 0, 1000), 'http_code' => $httpCode];
+        return ['ok' => false, 'reason' => 'invalid_response', 'message' => 'Stripe hat keine gültige JSON-Antwort geliefert.', 'raw' => substr((string)$raw, 0, 1000), 'http_code' => $httpCode];
     }
     if ($httpCode < 200 || $httpCode >= 300 || isset($json['error'])) {
         return [
@@ -398,7 +398,7 @@ function fb_stripe_find_promotion_code(string $code): ?array
         'limit' => 1,
     ]);
     if (empty($result['ok'])) {
-        throw new RuntimeException($result['message'] ?? 'Rabattcode konnte nicht geprÃ¼ft werden.');
+        throw new RuntimeException($result['message'] ?? 'Rabattcode konnte nicht geprüft werden.');
     }
     $data = $result['response']['data'] ?? [];
     $promotion = is_array($data) && isset($data[0]) && is_array($data[0]) ? $data[0] : null;
@@ -428,7 +428,7 @@ function fb_create_stripe_checkout_session(array $order, ?array $promotionCode =
     $selectedMethods = $methodMap[$paymentMethod] ?? $allowed;
     $selectedMethods = array_values(array_intersect($selectedMethods, $allowed));
     if (!$selectedMethods) {
-        throw new InvalidArgumentException('Diese Zahlungsart ist aktuell nicht verfÃ¼gbar.');
+        throw new InvalidArgumentException('Diese Zahlungsart ist aktuell nicht verfügbar.');
     }
 
     $lineItems = [];
@@ -440,7 +440,7 @@ function fb_create_stripe_checkout_session(array $order, ?array $promotionCode =
                 'unit_amount' => (int)($item['price_cents'] ?? 0),
                 'product_data' => [
                     'name' => (string)($item['name'] ?? ('FameBoost Paket ' . ($index + 1))),
-                    'description' => trim((string)($item['quantity'] ?? '') . ' ' . (string)($item['type'] ?? '') . ' Â· ' . (string)($item['speed_label'] ?? 'Standard')),
+                    'description' => trim((string)($item['quantity'] ?? '') . ' ' . (string)($item['type'] ?? '') . ' - ' . (string)($item['speed_label'] ?? 'Standard')),
                 ],
             ],
         ];
@@ -963,7 +963,7 @@ function fb_save_json_file(string $file, array $data): void
 
     $handle = fopen($file, 'c+');
     if (!$handle) {
-        throw new RuntimeException('Storage konnte nicht geÃƒÂ¶ffnet werden.');
+        throw new RuntimeException('Storage konnte nicht geöffnet werden.');
     }
 
     flock($handle, LOCK_EX);
@@ -984,7 +984,7 @@ function fb_mutate_json_file(string $file, callable $callback, array $fallback =
 
     $handle = fopen($file, 'c+');
     if (!$handle) {
-        throw new RuntimeException('Storage konnte nicht geÃƒÂ¶ffnet werden.');
+        throw new RuntimeException('Storage konnte nicht geöffnet werden.');
     }
 
     flock($handle, LOCK_EX);
@@ -1054,8 +1054,8 @@ function fb_public_order(array $order): array
     $paymentDone = ($order['payment_status'] ?? '') === 'paid' || in_array($order['status'], ['paid', 'fulfillment_hold', 'sent_to_reseller', 'in_progress', 'completed'], true);
     $steps = [
         ['key' => 'created', 'label' => 'Bestellung vorbereitet', 'state' => 'done'],
-        ['key' => 'payment', 'label' => 'Zahlung ÃƒÂ¼ber Stripe', 'state' => $paymentDone ? 'done' : 'active'],
-        ['key' => 'review', 'label' => 'PrÃƒÂ¼fung und Zuordnung', 'state' => in_array($order['status'], ['needs_review', 'manual_payment_check'], true) ? 'active' : (in_array($order['status'], ['pending_external_payment', 'payment_link_opened'], true) ? 'pending' : 'done')],
+        ['key' => 'payment', 'label' => 'Zahlung über Stripe', 'state' => $paymentDone ? 'done' : 'active'],
+        ['key' => 'review', 'label' => 'Prüfung und Zuordnung', 'state' => in_array($order['status'], ['needs_review', 'manual_payment_check'], true) ? 'active' : (in_array($order['status'], ['pending_external_payment', 'payment_link_opened'], true) ? 'pending' : 'done')],
         ['key' => 'fulfillment', 'label' => 'Bearbeitung', 'state' => in_array($order['status'], ['fulfillment_hold', 'sent_to_reseller', 'in_progress'], true) ? 'active' : ($order['status'] === 'completed' ? 'done' : 'pending')],
         ['key' => 'done', 'label' => 'Abgeschlossen', 'state' => $order['status'] === 'completed' ? 'done' : 'pending'],
     ];
@@ -1087,17 +1087,17 @@ function fb_status_label(string $status): string
     $labels = [
         'pending_external_payment' => 'Wartet auf externe Zahlung',
         'payment_link_opened' => 'Zu Stripe weitergeleitet',
-        'manual_payment_check' => 'Zahlung wird geprÃƒÂ¼ft',
+        'manual_payment_check' => 'Zahlung wird geprüft',
         'payment_failed' => 'Zahlung fehlgeschlagen',
-        'paid' => 'Zahlung bestÃƒÂ¤tigt',
+        'paid' => 'Zahlung bestätigt',
         'fulfillment_queued' => 'Bearbeitung vorbereitet',
         'fulfillment_hold' => 'Wartet auf Freigabe',
         'sent_to_reseller' => 'Bearbeitung gestartet',
-        'in_progress' => 'Bearbeitung lÃƒÂ¤uft',
+        'in_progress' => 'Bearbeitung läuft',
         'partially_completed' => 'Teilweise abgeschlossen',
         'completed' => 'Abgeschlossen',
         'refill_requested' => 'Refill angefragt',
-        'needs_review' => 'Manuelle PrÃƒÂ¼fung',
+        'needs_review' => 'Manuelle Prüfung',
         'canceled' => 'Storniert',
         'refunded' => 'Erstattet',
     ];
@@ -1129,19 +1129,19 @@ function fb_status_progress(string $status): int
 function fb_status_message(string $status): string
 {
     $messages = [
-        'pending_external_payment' => 'Deine Bestellung wurde vorbereitet. SchlieÃƒÅ¸e die Zahlung auf der sicheren Stripe-Seite ab.',
-        'payment_link_opened' => 'Du wurdest zu Stripe weitergeleitet. Nach der Zahlung wird die Bestellung geprÃƒÂ¼ft.',
-        'manual_payment_check' => 'Wir prÃƒÂ¼fen die Zahlung und ordnen die Bestellung zu.',
-        'payment_failed' => 'Die Zahlung wurde nicht bestÃƒÂ¤tigt. Bitte starte den Kauf erneut oder kontaktiere den Support.',
-        'paid' => 'Die Zahlung wurde bestÃƒÂ¤tigt. Die Bearbeitung kann vorbereitet werden.',
-        'fulfillment_queued' => 'Dein Auftrag ist eingeplant und wird fÃ¼r die Bearbeitung vorbereitet.',
+        'pending_external_payment' => 'Deine Bestellung wurde vorbereitet. Schließe die Zahlung auf der sicheren Stripe-Seite ab.',
+        'payment_link_opened' => 'Du wurdest zu Stripe weitergeleitet. Nach der Zahlung wird die Bestellung geprüft.',
+        'manual_payment_check' => 'Wir prüfen die Zahlung und ordnen die Bestellung zu.',
+        'payment_failed' => 'Die Zahlung wurde nicht bestätigt. Bitte starte den Kauf erneut oder kontaktiere den Support.',
+        'paid' => 'Die Zahlung wurde bestätigt. Die Bearbeitung kann vorbereitet werden.',
+        'fulfillment_queued' => 'Dein Auftrag ist eingeplant und wird für die Bearbeitung vorbereitet.',
         'fulfillment_hold' => 'Deine Bestellung ist bezahlt und vorgemerkt. Die Bearbeitung wird innerhalb von 24 Stunden freigegeben.',
         'sent_to_reseller' => 'Die Bearbeitung deiner Bestellung wurde gestartet.',
-        'in_progress' => 'Die Bearbeitung lÃƒÂ¤uft. Bitte ÃƒÂ¤ndere den Profilnamen nicht.',
-        'partially_completed' => 'Der Auftrag ist teilweise abgeschlossen und wird geprÃƒÂ¼ft.',
-        'completed' => 'Der Auftrag wurde abgeschlossen. Danke fÃƒÂ¼r deine Bestellung.',
-        'refill_requested' => 'Eine Refill-PrÃƒÂ¼fung wurde vorgemerkt.',
-        'needs_review' => 'Die Bestellung benÃƒÂ¶tigt eine manuelle PrÃƒÂ¼fung.',
+        'in_progress' => 'Die Bearbeitung läuft. Bitte ändere den Profilnamen nicht.',
+        'partially_completed' => 'Der Auftrag ist teilweise abgeschlossen und wird geprüft.',
+        'completed' => 'Der Auftrag wurde abgeschlossen. Danke für deine Bestellung.',
+        'refill_requested' => 'Eine Refill-Prüfung wurde vorgemerkt.',
+        'needs_review' => 'Die Bestellung benötigt eine manuelle Prüfung.',
     ];
     return $messages[$status] ?? 'Status wird aktualisiert.';
 }
@@ -1174,7 +1174,7 @@ function fb_hash_token(string $token): string
 
 function fb_money(int $cents): string
 {
-    return number_format($cents / 100, 2, ',', '.') . ' Ã¢â€šÂ¬';
+    return number_format($cents / 100, 2, ',', '.') . ' EUR';
 }
 
 function fb_money_float(float $amount, string $currency = ''): string
@@ -1242,10 +1242,127 @@ function fb_validate_target(string $target): string
 {
     $target = trim($target);
     if ($target === '' || strlen($target) > 300) {
-        throw new InvalidArgumentException('Bitte gib einen gÃƒÂ¼ltigen Profilnamen oder Link ein.');
+        throw new InvalidArgumentException('Bitte gib einen gültigen Profilnamen oder Link ein.');
     }
     if (preg_match('/[\r\n]/', $target)) {
-        throw new InvalidArgumentException('Der Profilname oder Link enthÃƒÂ¤lt ungÃƒÂ¼ltige Zeichen.');
+        throw new InvalidArgumentException('Der Profilname oder Link enthält ungültige Zeichen.');
+    }
+    return $target;
+}
+
+function fb_expected_target_kind(string $productType): string
+{
+    $type = function_exists('mb_strtolower') ? mb_strtolower($productType, 'UTF-8') : strtolower($productType);
+    if (str_contains($type, 'follower') || str_contains($type, 'abonnent')) {
+        return 'profile';
+    }
+    if (str_contains($type, 'view')) {
+        return 'media';
+    }
+    if (
+        str_contains($type, 'like')
+        || str_contains($type, 'kommentar')
+        || str_contains($type, 'save')
+        || str_contains($type, 'share')
+    ) {
+        return 'media';
+    }
+    return 'profile';
+}
+
+function fb_clean_target_for_detection(string $target): string
+{
+    return trim(preg_replace('/\s+/', '', $target) ?? '');
+}
+
+function fb_target_url_parts(string $target): ?array
+{
+    $target = fb_clean_target_for_detection($target);
+    if (!preg_match('/^https?:\/\//i', $target)) {
+        return null;
+    }
+    $parts = parse_url($target);
+    return is_array($parts) ? $parts : null;
+}
+
+function fb_is_plain_handle(string $target): bool
+{
+    $name = trim(fb_clean_target_for_detection($target), "@/ \t\n\r\0\x0B");
+    return $name !== '' && (bool)preg_match('/^[A-Za-z0-9._-]{1,80}$/', $name);
+}
+
+function fb_detect_target_kind(string $platform, string $target): string
+{
+    $platform = strtolower(trim($platform));
+    $parts = fb_target_url_parts($target);
+
+    if ($platform === 'instagram') {
+        if ($parts) {
+            $host = strtolower(preg_replace('/^www\./', '', (string)($parts['host'] ?? '')));
+            $path = trim((string)($parts['path'] ?? ''), '/');
+            $segments = $path === '' ? [] : explode('/', $path);
+            if ($host === 'instagram.com' && isset($segments[0])) {
+                $prefix = strtolower($segments[0]);
+                if (in_array($prefix, ['p', 'reel', 'tv'], true) && !empty($segments[1])) {
+                    return 'media';
+                }
+                return 'profile';
+            }
+        }
+        return fb_is_plain_handle($target) ? 'profile' : 'unknown';
+    }
+
+    if ($platform === 'tiktok') {
+        if ($parts) {
+            $host = strtolower(preg_replace('/^www\./', '', (string)($parts['host'] ?? '')));
+            $path = trim((string)($parts['path'] ?? ''), '/');
+            $segments = $path === '' ? [] : explode('/', $path);
+            if ($host === 'tiktok.com') {
+                $videoIndex = array_search('video', array_map('strtolower', $segments), true);
+                if ($videoIndex !== false && !empty($segments[$videoIndex + 1] ?? '')) {
+                    return 'media';
+                }
+                foreach ($segments as $segment) {
+                    if (str_starts_with($segment, '@')) {
+                        return 'profile';
+                    }
+                }
+            }
+        }
+        return fb_is_plain_handle($target) ? 'profile' : 'unknown';
+    }
+
+    if ($platform === 'youtube') {
+        if ($parts) {
+            $host = strtolower(preg_replace('/^www\./', '', (string)($parts['host'] ?? '')));
+            $path = trim((string)($parts['path'] ?? ''), '/');
+            $segments = $path === '' ? [] : explode('/', $path);
+            parse_str((string)($parts['query'] ?? ''), $query);
+            if ($host === 'youtu.be' && !empty($segments[0])) {
+                return 'media';
+            }
+            if ($host === 'youtube.com') {
+                if (!empty($query['v']) || in_array(strtolower($segments[0] ?? ''), ['shorts', 'live'], true)) {
+                    return 'media';
+                }
+                if (isset($segments[0]) && (str_starts_with($segments[0], '@') || in_array(strtolower($segments[0]), ['channel', 'c', 'user'], true))) {
+                    return 'profile';
+                }
+            }
+        }
+        return fb_is_plain_handle($target) ? 'profile' : 'unknown';
+    }
+
+    return 'unknown';
+}
+
+function fb_validate_target_for_product(string $platform, string $productType, string $target): string
+{
+    $target = fb_validate_target($target);
+    $expected = fb_expected_target_kind($productType);
+    $kind = fb_detect_target_kind($platform, $target);
+    if ($expected === 'media' && $kind === 'profile') {
+        throw new InvalidArgumentException('Für Likes oder Views brauchst du einen direkten Beitrag- oder Video-Link. Profil-Links sind für dieses Paket nicht möglich.');
     }
     return $target;
 }
@@ -1258,7 +1375,6 @@ function fb_speed_options(): array
         $options = [
             'standard' => ['label' => 'Standard', 'price_cents' => 0],
             'fast' => ['label' => 'Schnellere Bearbeitung', 'price_cents' => 399],
-            'custom' => ['label' => 'Individuelle Geschwindigkeit', 'price_cents' => 399],
         ];
     }
     return $options;
@@ -1271,8 +1387,6 @@ function fb_normalize_speed_key(string $speed): string
         'Standard' => 'standard',
         'fast' => 'fast',
         'Schnellere Bearbeitung' => 'fast',
-        'custom' => 'custom',
-        'Individuelle Geschwindigkeit' => 'custom',
     ];
     $speed = trim($speed);
     return $map[$speed] ?? strtolower($speed);
@@ -1283,7 +1397,7 @@ function fb_speed_option(string $speed): array
     $key = fb_normalize_speed_key($speed);
     $options = fb_speed_options();
     if (!isset($options[$key]) || !is_array($options[$key])) {
-        throw new InvalidArgumentException('Diese Liefergeschwindigkeit ist aktuell nicht verfÃ¼gbar.');
+        throw new InvalidArgumentException('Diese Liefergeschwindigkeit ist aktuell nicht verfügbar.');
     }
     return [
         'key' => $key,
@@ -1470,17 +1584,17 @@ function fb_update_order_from_stripe_session(array $session, string $eventType):
             } elseif ($currency !== strtolower((string)($order['currency'] ?? 'eur'))) {
                 $order['status'] = 'needs_review';
                 $order['payment_status'] = 'currency_mismatch';
-                $order = fb_append_history($order, 'needs_review', 'Stripe-WÃƒÂ¤hrung weicht von der Bestellung ab.');
+                $order = fb_append_history($order, 'needs_review', 'Stripe-Währung weicht von der Bestellung ab.');
             } elseif ($eventType === 'checkout.session.completed' && $paymentStatus === 'paid') {
                 $order['status'] = 'paid';
                 $order['payment_status'] = 'paid';
                 $order['paid_at'] = fb_now();
-                $order = fb_append_history($order, 'paid', 'Stripe Webhook hat die Zahlung bestÃƒÂ¤tigt.');
+                $order = fb_append_history($order, 'paid', 'Stripe Webhook hat die Zahlung bestätigt.');
             } elseif ($eventType === 'checkout.session.async_payment_succeeded') {
                 $order['status'] = 'paid';
                 $order['payment_status'] = 'paid';
                 $order['paid_at'] = fb_now();
-                $order = fb_append_history($order, 'paid', 'Asynchrone Stripe-Zahlung wurde bestÃƒÂ¤tigt.');
+                $order = fb_append_history($order, 'paid', 'Asynchrone Stripe-Zahlung wurde bestätigt.');
             } elseif ($eventType === 'checkout.session.async_payment_failed') {
                 $order['status'] = 'payment_failed';
                 $order['payment_status'] = 'failed';
@@ -1488,7 +1602,7 @@ function fb_update_order_from_stripe_session(array $session, string $eventType):
             } else {
                 $order['status'] = 'manual_payment_check';
                 $order['payment_status'] = $paymentStatus ?: 'manual_payment_check';
-                $order = fb_append_history($order, 'manual_payment_check', 'Stripe Webhook erhalten, Zahlung aber noch nicht final bestÃƒÂ¤tigt.');
+                $order = fb_append_history($order, 'manual_payment_check', 'Stripe Webhook erhalten, Zahlung aber noch nicht final bestätigt.');
             }
 
             $updated = $order;
@@ -1678,6 +1792,34 @@ function fb_attempt_order_fulfillment(string $orderNumber, bool $skipBalanceChec
                 break;
             }
 
+            $order['status'] = 'fulfillment_hold';
+            $order['payment_status'] = 'paid';
+            $order['reseller_status'] = 'manual_approval_required';
+            $order['hold_reason'] = 'manual_approval_required';
+            $order['priority'] = 'priority_booked';
+            $order['priority_label'] = 'Priority booked';
+            $order['hold_started_at'] = $order['hold_started_at'] ?? fb_now();
+            $order['estimated_reseller_cost'] = $order['estimated_reseller_cost'] ?? fb_estimated_reseller_cost($order);
+            foreach (($order['items'] ?? []) as $index => $item) {
+                $order['items'][$index]['status'] = 'fulfillment_hold';
+            }
+            if (empty($order['hold_email_sent_at'])) {
+                $sent = fb_notify_customer_balance_hold($order);
+                $order['hold_email_sent_at'] = $sent ? fb_now() : null;
+            }
+            if (empty($order['admin_hold_email_sent_at'])) {
+                $adminSent = fb_notify_admin_hold($order, [
+                    'reason' => 'manual_approval_required',
+                    'estimated_cost' => $order['estimated_reseller_cost'] ?? null,
+                    'manual_threshold' => null,
+                    'balance' => null,
+                ]);
+                $order['admin_hold_email_sent_at'] = $adminSent ? fb_now() : null;
+            }
+            $order = fb_append_history($order, 'fulfillment_hold', 'Zahlung bestätigt. Bestellung wartet auf manuelle Freigabe im Admin.');
+            $updated = $order;
+            break;
+
             $reseller = fb_call_reseller_add($order, $skipBalanceCheck);
             if (!empty($reseller['ok'])) {
                 $order = fb_apply_reseller_result_to_order($order, $reseller, 'Bezahlte Bestellung wurde automatisch an die Reseller-API übergeben.');
@@ -1742,7 +1884,7 @@ function fb_notify_customer_balance_hold(array $order): bool
     $body = <<<TEXT
 Hallo {$name},
 
-vielen Dank fÃƒÂ¼r deine Bestellung bei FameBoost.de.
+vielen Dank für deine Bestellung bei FameBoost.de.
 
 Deine Zahlung wurde erfolgreich erfasst. Deine Bestellung ist bei uns vorgemerkt und wird innerhalb von 24 Stunden bearbeitet.
 
@@ -1751,11 +1893,11 @@ Bestellnummer: {$orderNumber}
 Produkt: {$product}
 Profil/Link: {$target}
 
-Wichtig: Bitte ÃƒÂ¤ndere wÃƒÂ¤hrend der Bearbeitung deinen Profilnamen nicht und stelle sicher, dass dein Profil ÃƒÂ¶ffentlich erreichbar ist.
+Wichtig: Bitte ändere während der Bearbeitung deinen Profilnamen nicht und stelle sicher, dass dein Profil öffentlich erreichbar ist.
 
-Bei Fragen kannst du jederzeit ÃƒÂ¼ber unsere Kontaktseite eine Nachricht senden.
+Bei Fragen kannst du jederzeit über unsere Kontaktseite eine Nachricht senden.
 
-Viele GrÃƒÂ¼ÃƒÅ¸e
+Viele Grüße
 Dein FameBoost.de Team
 TEXT;
 
@@ -1818,7 +1960,7 @@ function fb_notify_admin_hold(array $order, array $hold): bool
     $threshold = $hold['manual_threshold'] ?? ($config['reseller_manual_review_threshold'] ?? 5.0);
     $balance = $hold['balance']['balance'] ?? null;
     $balanceCurrency = (string)($hold['balance']['currency'] ?? '');
-    $balanceText = is_numeric($balance) ? fb_money_float((float)$balance, $balanceCurrency) : 'nicht verfÃƒÂ¼gbar';
+    $balanceText = is_numeric($balance) ? fb_money_float((float)$balance, $balanceCurrency) : 'nicht verfügbar';
     $reason = (string)($hold['reason'] ?? 'hold');
 
     $subject = 'FameBoost Hold: ' . $orderNumber;
@@ -1842,12 +1984,12 @@ Reseller:
 Service-ID: {$item['reseller_service_id']}
 Service-Name: {$item['reseller_service_name']}
 Rate pro 1000: {$item['reseller_rate']}
-GeschÃƒÂ¤tzte Reseller-Kosten: {$costText}
+Geschätzte Reseller-Kosten: {$costText}
 Manueller Freigabewert: {$threshold}
 Letzte Reseller-Balance: {$balanceText}
 
 Aktion:
-Balance/Bestellung prÃƒÂ¼fen und danach im Admin freigeben.
+Balance/Bestellung prüfen und danach im Admin freigeben.
 TEXT;
 
     return fb_send_text_mail($to, $subject, $body);

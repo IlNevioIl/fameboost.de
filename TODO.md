@@ -66,12 +66,6 @@ Stand: 12.06.2026
 
 ## Neue Features
 
-- Custom-Speed finalisieren:
-  - Wenn Kunden `Individuelle Geschwindigkeit` wählen, muss klar abgefragt werden, was genau gewünscht ist.
-  - Backend muss diese Zusatzangabe speichern und im Admin sichtbar machen.
-  - Admin soll Custom-Speed-Items eindeutig markieren, damit sie manuell geprüft oder passend weitergegeben werden können.
-  - Reseller-Automation darf Custom-Speed nur automatisch ausführen, wenn dafür sichere Regeln definiert sind.
-  - Kundentexte müssen neutral bleiben und keine konkrete Liefergarantie versprechen.
 - Profil-Suche / Profil-Prüfung einbauen:
   - Kunde soll Profilname oder Link eingeben und optional eine Vorschau/Prüfung bekommen.
   - Plattform, Profilname, URL und öffentliche Erreichbarkeit sollen erkannt werden.

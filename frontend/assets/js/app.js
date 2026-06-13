@@ -8,17 +8,23 @@
 
 const speedOptions = {
   standard: { label: "Standard", short: "Normale Bearbeitung", price: 0 },
-  fast: { label: "Schnellere Bearbeitung", short: "Priorisierte interne Prüfung", price: 3.99 },
-  custom: { label: "Individuelle Geschwindigkeit", short: "Flexible Bearbeitung nach Paketlage", price: 3.99 }
+  fast: { label: "Schnellere Bearbeitung", short: "Priorisierte interne Prüfung", price: 3.99 }
 };
 
 const paymentMethods = [
-  { id: "all", label: "Alle verfügbaren Methoden", detail: "Stripe zeigt alle aktiven Zahlungsarten", icons: ["Visa", "MC", "PayPal", "Klarna"] },
+  { id: "all", label: "Alle verfügbaren Methoden", detail: "Stripe zeigt alle aktiven Zahlungsarten", icons: ["Visa", "MC", "PayPal", "Klarna", "Amex"] },
   { id: "card", label: "Karte & Wallets", detail: "Visa, Mastercard, Apple Pay, Google Pay", icons: ["Visa", "MC", "Apple", "G Pay"] },
   { id: "paypal", label: "PayPal", detail: "Zahlung über dein PayPal-Konto", icons: ["PayPal"] },
   { id: "klarna", label: "Klarna", detail: "Klarna, falls für deine Bestellung verfügbar", icons: ["Klarna"] },
   { id: "sofort", label: "Sofort", detail: "Direkte Bankzahlung über Stripe", icons: ["Sofort"] }
 ];
+
+const targetKindLabels = {
+  profile: "Profil",
+  post: "Beitrag",
+  video: "Video",
+  unknown: "Manuelle Eingabe"
+};
 
 const baseProducts = {
   "instagram-follower-kaufen": {
@@ -486,7 +492,7 @@ function footer() {
       </div>
       <div class="footer-bottom">
         <span>© 2026 FameBoost.de. Alle Rechte vorbehalten.</span>
-        <span>PayPal · Visa · Mastercard · Apple Pay · Google Pay · Klarna · Sofort</span>
+        <span class="footer-payment-logos">${paymentLogoStrip("footer")}</span>
       </div>
     </div>`;
 }
@@ -603,7 +609,7 @@ function renderProduct(slug) {
     <section class="product-hero platform-product-hero product-hero-clean" style="${platformStyle(product.platform)}"><div class="container product-grid">
       <div class="product-copy-panel product-showcase">
         <div class="product-platform-line">${platformLogo(product.platform, true)}<span>Home / ${product.platform} / ${product.title}</span></div>
-        <div class="product-kicker">Service aktiv · Kein Passwort nötig</div>
+        <div class="product-kicker">Service aktiv - Kein Passwort nötig</div>
         <h1>${product.headline}</h1>
         <p class="lead">Wähle eine Menge, trage deinen öffentlichen Profilnamen oder Link ein und schließe die Bestellung in wenigen Schritten ab.</p>
         <div class="product-hero-stats">
@@ -648,12 +654,17 @@ function configurator(slug, product) {
     <div class="config-head">${platformLogo(product.platform)}<div><span>Direkt bestellen</span><h2>Paket konfigurieren</h2></div></div>
     <div class="field"><label>Wähle deine ${product.type}</label><div class="option-grid" data-qty-options>${product.quantities.map((q, i) => `<button class="option ${i === 0 ? "active" : ""}" type="button" data-qty="${q[0]}"><strong>${amountLabel(q[0])}</strong><small>${packageValueLabel(product, q[0], q[1], i)}</small></button>`).join("")}<button class="option" type="button" data-custom><strong>Eigene Menge</strong><small>frei wählen</small></button></div></div>
     <div class="field custom-quantity-row" data-custom-row style="display:none"><label>Eigene Menge</label><input class="input" type="number" min="1" step="1" name="customQuantity" data-custom-qty placeholder="z. B. 750"><small data-limit-hint>${productLimitHint(slug, product)}</small></div>
-    <div class="field"><label>Wie lautet dein Profilname oder Link?</label><input class="input" required name="profile" placeholder="z. B. @deinprofil oder Profil-Link"><small>Bitte stelle sicher, dass dein Profil öffentlich erreichbar ist, damit die Bestellung korrekt verarbeitet werden kann.</small></div>
-    <div class="field"><label>Liefergeschwindigkeit</label><div class="speed-grid">${Object.entries(speedOptions).map(([key, option], index) => `<label class="speed-option ${index === 0 ? "active" : ""}"><input type="radio" name="speed" value="${key}" ${index === 0 ? "checked" : ""}><span><strong>${option.label}</strong><small>${option.short}${option.price ? ` · +${eur(option.price)}` : ""}</small></span></label>`).join("")}</div></div>
+    <div class="field smart-target-field">
+      <label>Profil, Kanal oder Beitragslink</label>
+      <input class="input" required name="profile" data-target-input autocomplete="off" placeholder="${targetPlaceholder(product)}">
+      <small>${targetHelpText(product)}</small>
+      <div class="target-preview" data-target-preview>${renderTargetPreview(detectTarget(product.platform, product.type, ""))}</div>
+    </div>
+    <div class="field"><label>Liefergeschwindigkeit</label><div class="speed-grid">${Object.entries(speedOptions).map(([key, option], index) => `<label class="speed-option ${index === 0 ? "active" : ""}"><input type="radio" name="speed" value="${key}" ${index === 0 ? "checked" : ""}><span><strong>${option.label}</strong><small>${option.short}${option.price ? ` - +${eur(option.price)}` : ""}</small></span></label>`).join("")}</div></div>
     <div class="price-box"><span>Gesamtpreis</span><strong data-total>${eur(first[1])}</strong></div>
     <button class="btn btn-primary" style="width:100%" type="submit">In den Warenkorb</button>
     <div class="form-status config-status" data-config-status role="status"></div>
-    <div class="payment-row">${["PayPal","Visa","Mastercard","Apple Pay","Google Pay","Klarna","Sofort"].map((p) => `<span class="pay">${p}</span>`).join("")}</div>
+    <div class="payment-row">${paymentLogoStrip("compact")}</div>
     <div class="mini-trust"><span>Kein Passwort nötig</span><span>Sichere Zahlung</span><span>Schnelle Bearbeitung</span><span>Support bei Fragen</span></div>
   </form>`;
 }
@@ -681,7 +692,7 @@ function relatedProducts(currentSlug) {
   const products = getProducts();
   return `<div class="content-block related-products reveal"><h2>Passende Produkte</h2><div class="related-list">${Object.entries(products).filter(([slug]) => slug !== currentSlug).slice(0, 6).map(([slug, product]) => `<a class="related-card" style="${platformStyle(product.platform)}" href="${pathTo(slug)}">
     ${platformLogo(product.platform)}
-    <span class="related-copy"><strong>${product.title}</strong><small>${product.platform} · ${product.type}</small></span>
+    <span class="related-copy"><strong>${product.title}</strong><small>${product.platform} - ${product.type}</small></span>
     <span class="related-price">ab ${eur(productMinPrice(product))}</span>
     <span class="related-arrow">→</span>
   </a>`).join("")}</div></div>`;
@@ -696,14 +707,16 @@ function cartPage() {
 }
 
 function cartItem(item, index) {
-  return `<div class="cart-item"><div><h3>${item.title}</h3><div class="line-meta"><span>${item.platform}</span><span>${amountLabel(item.quantity)} ${item.type}${item.customQuantity ? " · eigene Menge" : ""}</span><span>${item.speedLabel || "Standard"}</span><span>${item.profile}</span></div></div><div style="text-align:right"><strong>${eur(item.price)}</strong><br><button class="remove" data-remove="${index}">Entfernen</button></div></div>`;
+  const targetKind = targetKindLabels[item.targetKind] || "Ziel";
+  const targetLabel = item.targetLabel || item.targetUrl || item.profile || "Ziel fehlt";
+  return `<div class="cart-item"><div><h3>${escapeHtml(item.title)}</h3><div class="line-meta"><span>${escapeHtml(item.platform)}</span><span>${amountLabel(item.quantity)} ${escapeHtml(item.type)}${item.customQuantity ? " - eigene Menge" : ""}</span><span>${escapeHtml(item.speedLabel || "Standard")}</span><span>${escapeHtml(targetKind)}: ${escapeHtml(targetLabel)}</span></div></div><div style="text-align:right"><strong>${eur(item.price)}</strong><br><button class="remove" data-remove="${index}">Entfernen</button></div></div>`;
 }
 
 function summaryBox(target, label) {
   const config = getConfig();
   const cart = getCart();
   const subtotal = cart.reduce((sum, item) => sum + item.price, 0);
-  return `<aside class="checkout-box reveal"><h2 style="font-size:28px">Bestellübersicht</h2><div class="summary-row"><span>Zwischensumme</span><strong>${eur(subtotal)}</strong></div><div class="coupon-box"><strong>Aktionscode vorhanden?</strong><small>Du kannst den Code im nächsten Schritt auf unserer Zahlungsseite eingeben.</small></div><div class="summary-row total"><span>Gesamtpreis</span><strong>${eur(subtotal)}</strong></div><a class="btn btn-primary" style="width:100%" href="${target}">${label}</a></aside>`;
+  return `<aside class="checkout-box reveal"><h2 style="font-size:28px">Bestellübersicht</h2><div class="summary-row"><span>Zwischensumme</span><strong>${eur(subtotal)}</strong></div><div class="coupon-box"><strong>Aktionscode vorhanden?</strong><small>Du kannst den Code im nächsten Schritt auf unserer Zahlungsseite eingeben.</small></div><div class="summary-row total"><span>Gesamtpreis</span><strong>${eur(subtotal)}</strong></div><a class="btn btn-primary" style="width:100%" href="${target}">${label}</a><div class="summary-payment-strip">${paymentLogoStrip("small")}</div></aside>`;
 }
 
 function checkoutPage() {
@@ -727,10 +740,11 @@ function paymentPage() {
       <div class="product-platform-line">${paymentIcon("Stripe")}<span>Sichere Zahlung für ${cart.length} Position${cart.length === 1 ? "" : "en"}</span></div>
       <h1>Zahlungsart auswählen</h1>
       <p>Wähle deine bevorzugte Zahlungsart. Danach wirst du zu Stripe weitergeleitet, wo die Zahlung verschlüsselt abgeschlossen wird.</p>
+      <div class="payment-hero-logos">${paymentLogoStrip("hero")}</div>
       <form data-payment>
         <div class="coupon-panel">
           <label>Rabattcode</label>
-          <div class="coupon-input-row"><input class="input" name="coupon" placeholder="z. B. START15" value="${copiedCoupon}"><button class="btn btn-light" type="button" data-validate-coupon>Code prüfen</button></div>
+          <div class="coupon-input-row"><input class="input" name="coupon" placeholder="Rabattcode eingeben" value="${copiedCoupon}"><button class="btn btn-light" type="button" data-validate-coupon>Code prüfen</button></div>
           <small data-coupon-status>Rabatte werden sicher über Stripe Promotion Codes geprüft.</small>
         </div>
         <div class="payment-method-grid">
@@ -742,9 +756,10 @@ function paymentPage() {
     </div>
     <aside class="payment-summary reveal">
       <h2>Bestellübersicht</h2>
-      <div class="payment-items">${cart.map((item) => `<div class="payment-summary-item"><div><strong>${item.title}</strong><small>${amountLabel(item.quantity)} ${item.type} · ${item.speedLabel || "Standard"}</small></div><span>${eur(item.price)}</span></div>`).join("")}</div>
+      <div class="payment-items">${cart.map((item) => `<div class="payment-summary-item"><div><strong>${item.title}</strong><small>${amountLabel(item.quantity)} ${item.type} - ${item.speedLabel || "Standard"}</small></div><span>${eur(item.price)}</span></div>`).join("")}</div>
       <div class="summary-row total"><span>Gesamt vor Rabatt</span><strong>${eur(subtotal)}</strong></div>
       <div class="payment-trust"><span>SSL</span><span>Kein Passwort</span><span>Einmalzahlung</span><span>Stripe Checkout</span></div>
+      ${paymentLogoStrip("small")}
       <p class="muted">Apple Pay und Google Pay erscheinen abhängig von Gerät, Browser und Stripe-Verfügbarkeit.</p>
     </aside>
   </div></section>`;
@@ -982,7 +997,7 @@ function getOrderLookupFromUrl() {
 function renderOrderStatus(order, token) {
   const steps = order.steps || [];
   const items = order.items || [];
-  return `<h2>Status: ${order.status_label}</h2><p class="muted">${order.message}</p><div class="progress-shell"><div class="progress-bar" style="width:${order.progress || 20}%"></div></div><div class="order-detail-grid"><div><strong>Bestellnummer</strong><span>${order.order_number}</span></div><div><strong>Positionen</strong><span>${items.length || 1}</span></div><div><strong>Gesamt</strong><span>${centsToEur(order.amount_total_cents)}</span></div><div><strong>Bezahlt</strong><span>${order.amount_paid_cents !== null && order.amount_paid_cents !== undefined ? centsToEur(order.amount_paid_cents) : "Wartet"}</span></div></div><div class="order-items-list">${items.map((item) => `<div class="order-item-row"><div><strong>${item.name}</strong><small>${amountLabel(item.quantity)} ${item.type}${item.custom_quantity ? " · eigene Menge" : ""} · ${item.speed_label || "Standard"}</small></div><span>${item.status || order.status}</span></div>`).join("")}</div><div class="status-steps">${steps.map((step) => `<div class="status-step ${step.state}"><span></span><strong>${step.label}</strong></div>`).join("")}</div>${feedbackBlock(order, token)}`;
+  return `<h2>Status: ${order.status_label}</h2><p class="muted">${order.message}</p><div class="progress-shell"><div class="progress-bar" style="width:${order.progress || 20}%"></div></div><div class="order-detail-grid"><div><strong>Bestellnummer</strong><span>${order.order_number}</span></div><div><strong>Positionen</strong><span>${items.length || 1}</span></div><div><strong>Gesamt</strong><span>${centsToEur(order.amount_total_cents)}</span></div><div><strong>Bezahlt</strong><span>${order.amount_paid_cents !== null && order.amount_paid_cents !== undefined ? centsToEur(order.amount_paid_cents) : "Wartet"}</span></div></div><div class="order-items-list">${items.map((item) => `<div class="order-item-row"><div><strong>${item.name}</strong><small>${amountLabel(item.quantity)} ${item.type}${item.custom_quantity ? " - eigene Menge" : ""} - ${item.speed_label || "Standard"}</small></div><span>${item.status || order.status}</span></div>`).join("")}</div><div class="status-steps">${steps.map((step) => `<div class="status-step ${step.state}"><span></span><strong>${step.label}</strong></div>`).join("")}</div>${feedbackBlock(order, token)}`;
 }
 
 function feedbackBlock(order, token) {
@@ -1041,7 +1056,10 @@ async function createBackendOrder(form) {
     items: cart.map((item) => ({
       slug: item.slug,
       quantity: item.quantity,
-      profile: item.profile,
+      profile: item.targetUrl || item.profile,
+      target_kind: item.targetKind || "",
+      target_label: item.targetLabel || "",
+      target_platform: item.targetPlatform || item.platform || "",
       speed: item.speed,
       refill: item.refill
     }))
@@ -1107,12 +1125,13 @@ function renderAdminOrders(orders, notice, meta = {}) {
   const balanceStatus = meta.last_reseller_balance?.message && meta.last_reseller_balance?.balance === undefined ? meta.last_reseller_balance.message : `Zuletzt geprüft${balanceTime ? `: ${balanceTime}` : ""}`;
   const adminBalancePanel = `<div class="admin-balance-panel">
     <div><strong>Reseller-Balance</strong><span>${balance}</span><small>${balanceStatus}</small></div>
-    <div><strong>Mindestbalance</strong><span>${meta.min_reseller_balance ?? 20}</span><small>Darunter gehen bezahlte Orders automatisch auf Hold.</small></div>
-    <div><strong>Manuelle Freigabe</strong><span>über ${meta.manual_review_threshold ?? 5}</span><small>Wenn der Reseller-Einkauf einer Bestellung höher ist, wird nicht automatisch ausgeliefert.</small></div>
+    <div><strong>Freigabe-Modus</strong><span>Manuell</span><small>Bezahlte Orders werden nicht automatisch ausgeliefert.</small></div>
+    <div><strong>Priority</strong><span>Booked</span><small>Neue bezahlte Orders stehen oben und warten auf deine Freigabe.</small></div>
   </div>`;
-  const holdNotice = meta.hold_count ? `<div class="notice hold-notice"><strong>${meta.hold_count} Bestellung(en) auf Hold.</strong><br>Letzte Panel-Balance: ${balance}. Mindestwert: ${meta.min_reseller_balance ?? 20}. Lade Balance nach und klicke dann auf „Alle Holds freigeben“ oder gib einzelne Bestellungen frei.</div>` : "";
+  const holdNotice = meta.hold_count ? `<div class="notice hold-notice"><strong>${meta.hold_count} Bestellung(en) warten auf Freigabe.</strong><br>Neue bezahlte Orders werden als Priority booked ganz oben angezeigt. Gib sie einzeln frei, wenn sie an den Reseller gesendet werden sollen.</div>` : "";
   if (!orders.length) return `${notice ? `<div class="notice">${notice}</div>` : ""}${adminBalancePanel}<div class="notice">Noch keine Bestellungen vorhanden.</div>`;
   return `${notice ? `<div class="notice">${notice}</div>` : ""}${adminBalancePanel}${holdNotice}<div class="admin-order-list">${orders.map((order) => {
+    const priorityLabel = order.priority_label || (order.hold_reason === "manual_approval_required" ? "Priority booked" : "");
     const items = order.items?.length ? order.items : [{
       name: order.product,
       type: order.type,
@@ -1129,13 +1148,13 @@ function renderAdminOrders(orders, notice, meta = {}) {
       status: order.status
     }];
     const itemRows = items.map((item) => `<div class="admin-item-row">
-      <div><strong>${item.name}</strong><small>${amountLabel(item.quantity)} ${item.type}${item.custom_quantity ? " · eigene Menge" : ""} · ${item.speed_label || "Standard"} · ${centsToEur(item.price_cents || 0)}</small></div>
+      <div><strong>${item.name}</strong><small>${amountLabel(item.quantity)} ${item.type}${item.custom_quantity ? " - eigene Menge" : ""} - ${item.speed_label || "Standard"} - ${centsToEur(item.price_cents || 0)}</small></div>
       <div><a href="${item.target_url || "#"}" target="_blank" rel="noopener">${item.target || "Ziel fehlt"}</a><small>${[
         item.reseller_service_id ? `Service #${item.reseller_service_id}` : "",
         item.reseller_order_id ? `JAP-ID ${item.reseller_order_id}` : "",
         item.estimated_reseller_cost !== null && item.estimated_reseller_cost !== undefined ? `EK ca. ${Number(item.estimated_reseller_cost).toFixed(4)}` : "",
         item.status ? `Status ${item.status}` : ""
-      ].filter(Boolean).join(" · ")}</small></div>
+      ].filter(Boolean).join(" - ")}</small></div>
     </div>`).join("");
     const resellerMeta = [
       order.reseller_service_id ? `Service #${order.reseller_service_id}` : "",
@@ -1146,10 +1165,11 @@ function renderAdminOrders(orders, notice, meta = {}) {
       order.status === "fulfillment_hold" && order.hold_email_sent_at ? `Kunden-Mail: ${new Date(order.hold_email_sent_at).toLocaleString("de-DE")}` : "",
       order.status === "fulfillment_hold" && order.admin_hold_email_sent_at ? `Admin-Mail: ${new Date(order.admin_hold_email_sent_at).toLocaleString("de-DE")}` : "",
       order.reseller_remains !== null && order.reseller_remains !== undefined ? `Rest: ${order.reseller_remains}` : ""
-    ].filter(Boolean).join(" · ");
+    ].filter(Boolean).join(" - ");
     return `<article class="admin-order-card">
       <div class="admin-order-head">
-        <div><strong>${order.order_number}</strong><span>${order.status_label} · ${new Date(order.created_at).toLocaleString("de-DE")}</span></div>
+        <div><strong>${order.order_number}</strong><span>${order.status_label} - ${new Date(order.created_at).toLocaleString("de-DE")}</span></div>
+        ${priorityLabel ? `<span class="badge priority-booked-badge">${priorityLabel}</span>` : ""}
         <span class="badge">${centsToEur(order.amount_total_cents)}</span>
       </div>
       <div class="order-detail-grid">
@@ -1304,7 +1324,7 @@ function renderResellerCostBox(product) {
     })
     .join("");
   return `<div class="reseller-cost-box">
-    <div><strong>Kalkulation pro Menge</strong><span>Rate ${panelMoney(rate)} pro 1.000 · grob ohne Stripe-Gebühren und Wechselkurs</span></div>
+    <div><strong>Kalkulation pro Menge</strong><span>Rate ${panelMoney(rate)} pro 1.000 - grob ohne Stripe-Gebühren und Wechselkurs</span></div>
     <div class="reseller-cost-scroll"><table class="reseller-cost-table">
       <thead><tr><th>Menge</th><th>Verkauf</th><th>Einkauf ca.</th><th>Rohertrag ca.</th><th>Marge</th></tr></thead>
       <tbody>${rows}</tbody>
@@ -1337,7 +1357,7 @@ function renderServiceMapping(data) {
           <option value="min_asc" ${resellerServicesState.sort === "min_asc" ? "selected" : ""}>Min: klein zuerst</option>
           <option value="max_desc" ${resellerServicesState.sort === "max_desc" ? "selected" : ""}>Max: groß zuerst</option>
         </select>
-        <span>${services.length} Services geladen${data.cached ? " · Cache" : ""}</span>
+        <span>${services.length} Services geladen${data.cached ? " - Cache" : ""}</span>
       </div>
       <div data-active-product-note>${products[0] ? renderActiveProductNote(products[0]) : ""}</div>
       <div class="service-list">
@@ -1354,14 +1374,14 @@ function renderActiveProductNote(product) {
   const maxWarning = mappedServiceMax && offeredMax && mappedServiceMax < offeredMax ? `<br><strong class="admin-danger-text">Max-Warnung:</strong> Der zugewiesene Service kann maximal ${amountLabel(mappedServiceMax)}, im Shop sind aber bis ${amountLabel(offeredMax)} angeboten.` : "";
   const health = resellerServicesState.health?.products?.[product.slug];
   const healthNote = health && health.available === false ? `<br><strong class="admin-danger-text">Warnung:</strong> Zugewiesener Service #${health.service_id} ist aktuell nicht verfügbar. Käufe für dieses Produkt werden blockiert, bis du neu zuweist.` : "";
-  return `<div class="admin-meta ${health?.available === false || maxWarning ? "admin-meta-danger" : ""}"><strong>Aktives Produkt:</strong> ${product.label} · Mengen: ${(product.quantities || []).map(amountLabel).join(", ")}${product.mapping?.service_name ? `<br><strong>Aktuelles Mapping:</strong> #${product.mapping.service_id} · ${product.mapping.service_name}` : ""}${maxNote}${maxWarning}${healthNote}${renderResellerCostBox(product)}</div>`;
+  return `<div class="admin-meta ${health?.available === false || maxWarning ? "admin-meta-danger" : ""}"><strong>Aktives Produkt:</strong> ${product.label} - Mengen: ${(product.quantities || []).map(amountLabel).join(", ")}${product.mapping?.service_name ? `<br><strong>Aktuelles Mapping:</strong> #${product.mapping.service_id} - ${product.mapping.service_name}` : ""}${maxNote}${maxWarning}${healthNote}${renderResellerCostBox(product)}</div>`;
 }
 
 function renderServiceCard(service, activeSlug) {
   const timing = serviceTiming(service);
   const start = timing.startHours !== null ? `Start ca. ${timing.startHours < 1 ? Math.round(timing.startHours * 60) + " Min" : timing.startHours + " h"}` : "";
   const speed = timing.speedPerDay !== null ? `Speed ca. ${amountLabel(Math.round(timing.speedPerDay))}/Tag` : "";
-  const meta = [`ID ${service.service}`, service.category, service.type, service.rate ? `Rate ${service.rate}` : "", service.min ? `Min ${service.min}` : "", service.max ? `Max ${service.max}` : "", start, speed].filter(Boolean).join(" · ");
+  const meta = [`ID ${service.service}`, service.category, service.type, service.rate ? `Rate ${service.rate}` : "", service.min ? `Min ${service.min}` : "", service.max ? `Max ${service.max}` : "", start, speed].filter(Boolean).join(" - ");
   const warning = serviceMaxWarning(service, activeSlug);
   return `<article class="service-card ${warning ? "service-card-warning" : ""}">
     <div>
@@ -1408,7 +1428,7 @@ function renderResellerHealth(health) {
   if (!unavailable.length) {
     return `<div class="notice service-health-ok"><strong>Alle gemappten Reseller-Services verfügbar.</strong><br>${health.mapped_count || 0} Mapping(s), ${health.service_count || 0} Services geprüft. Letzter Check: ${checked}</div>`;
   }
-  return `<div class="notice service-health-danger"><strong>${unavailable.length} Mapping(s) müssen dringend gefixt werden.</strong><br>Käufe für diese Produkte werden blockiert, bis ein verfügbarer Service zugewiesen ist. Letzter Check: ${checked}<ul>${unavailable.map((item) => `<li>${item.label}: Service #${item.service_id} ${item.service_name ? `· ${item.service_name}` : ""}</li>`).join("")}</ul></div>`;
+  return `<div class="notice service-health-danger"><strong>${unavailable.length} Mapping(s) müssen dringend gefixt werden.</strong><br>Käufe für diese Produkte werden blockiert, bis ein verfügbarer Service zugewiesen ist. Letzter Check: ${checked}<ul>${unavailable.map((item) => `<li>${item.label}: Service #${item.service_id} ${item.service_name ? `- ${item.service_name}` : ""}</li>`).join("")}</ul></div>`;
 }
 
 async function loadResellerHealth(refresh = false) {
@@ -1560,6 +1580,8 @@ function bindEvents() {
       const qty = selectedConfiguratorQuantity(form, product);
       const speedKey = selectedSpeed(form);
       const price = cartItemTotal(product, qty, speedKey);
+      const target = detectTarget(product.platform, product.type, form.profile.value);
+      const finalTarget = target.url || cleanTargetInput(form.profile.value);
       setCart([...getCart(), {
         slug,
         title: product.title,
@@ -1567,7 +1589,11 @@ function bindEvents() {
         type: product.type,
         quantity: qty,
         customQuantity: Boolean(form.querySelector(".option.active")?.matches("[data-custom]")),
-        profile: form.profile.value,
+        profile: finalTarget,
+        targetKind: target.kind,
+        targetUrl: finalTarget,
+        targetLabel: target.label || finalTarget,
+        targetPlatform: target.platform || product.platform,
         speed: speedKey,
         speedLabel: speedOptions[speedKey]?.label || "Standard",
         speedPrice: speedPrice(speedKey),
@@ -1673,6 +1699,19 @@ function bindEvents() {
     if (couponCheck) {
       event.preventDefault();
       validateCoupon(couponCheck.closest("[data-payment]"));
+      return;
+    }
+    const targetUse = event.target.closest("[data-use-target]");
+    if (targetUse) {
+      event.preventDefault();
+      const form = targetUse.closest("[data-configurator]");
+      const product = form ? getProducts()[form.dataset.slug] : null;
+      const input = form?.querySelector("[data-target-input]");
+      if (product && input) {
+        const result = detectTarget(product.platform, product.type, input.value);
+        if (result.url) input.value = result.url;
+        updateTargetPreview(form);
+      }
       return;
     }
     const option = event.target.closest("[data-configurator] .option");
@@ -1866,6 +1905,201 @@ function paymentIcon(label) {
   return `<span class="payment-logo payment-logo-${cls}">${label}</span>`;
 }
 
+function paymentLogoStrip(variant = "") {
+  const variantClass = variant ? ` payment-logo-strip-${variant}` : "";
+  return `<img class="payment-logo-strip${variantClass}" src="/assets/img/payment-methods.webp" alt="PayPal, Apple Pay, Google Pay, Visa, Mastercard, Klarna, American Express und Sofort">`;
+}
+
+function escapeHtml(value) {
+  return String(value ?? "").replace(/[&<>"']/g, (char) => ({
+    "&": "&amp;",
+    "<": "&lt;",
+    ">": "&gt;",
+    '"': "&quot;",
+    "'": "&#039;"
+  }[char]));
+}
+
+function targetPlaceholder(product) {
+  const platform = String(product.platform || "").toLowerCase();
+  const expected = expectedTargetKind(product.platform, product.type);
+  if (platform === "youtube") return expected === "profile" ? "z. B. @deinkanal oder Kanal-Link" : "z. B. YouTube-Video- oder Shorts-Link";
+  if (platform === "tiktok") return expected === "profile" ? "z. B. @deinprofil oder TikTok-Link" : "z. B. TikTok-Video-Link";
+  if (platform === "instagram") return expected === "profile" ? "z. B. @deinprofil oder Instagram-Link" : "z. B. Instagram-Beitrag oder Reel-Link";
+  return "z. B. @deinprofil oder öffentlicher Link";
+}
+
+function targetHelpText(product) {
+  const expected = expectedTargetKind(product.platform, product.type);
+  if (expected === "profile") return "Für dieses Paket reicht ein öffentliches Profil oder ein Kanal-Link. Ein Passwort wird nicht benötigt.";
+  return "Für Likes oder Views ist ein direkter Beitrag-, Video- oder Reel-Link am besten. Ein Profil-Link ist möglich, kann die Zuordnung aber verzögern.";
+}
+
+function expectedTargetKind(platform, productType) {
+  const type = String(productType || "").toLowerCase();
+  const name = String(platform || "").toLowerCase();
+  if (type.includes("follower") || type.includes("abonnent")) return "profile";
+  if (name === "youtube" || type.includes("view")) return "video";
+  if (type.includes("like") || type.includes("kommentar") || type.includes("save") || type.includes("share")) return "post";
+  return "profile";
+}
+
+function cleanTargetInput(rawInput) {
+  return String(rawInput || "").trim().replace(/[\r\n\t]/g, "").replace(/\s+/g, "");
+}
+
+function parseMaybeUrl(value, defaultHost = "") {
+  const raw = cleanTargetInput(value);
+  if (!raw) return null;
+  try {
+    if (/^https?:\/\//i.test(raw)) return new URL(raw);
+    if (/^www\./i.test(raw) || (defaultHost && raw.toLowerCase().startsWith(defaultHost))) return new URL(`https://${raw}`);
+  } catch {
+    return null;
+  }
+  return null;
+}
+
+function canonicalUsername(raw, platform = "") {
+  let value = cleanTargetInput(raw).replace(/^@+/, "");
+  if (platform === "youtube") value = value.replace(/^\/?@?/, "");
+  value = value.replace(/^\/+|\/+$/g, "");
+  if (!/^[A-Za-z0-9._-]{1,80}$/.test(value)) return "";
+  return value;
+}
+
+function targetResult(platform, raw, kind, url, label, extra = {}) {
+  return {
+    platform,
+    raw: cleanTargetInput(raw),
+    kind: kind || "unknown",
+    url: url || cleanTargetInput(raw),
+    label: label || cleanTargetInput(raw) || "Noch kein Ziel",
+    username: extra.username || "",
+    note: extra.note || "",
+    warning: extra.warning || "",
+    status: extra.status || "ready"
+  };
+}
+
+function normalizeInstagramTarget(rawInput, expectedKind = "profile") {
+  const raw = cleanTargetInput(rawInput);
+  if (!raw) return targetResult("Instagram", raw, "unknown", "", "Noch kein Ziel", { status: "empty", note: "Gib ein Instagram-Profil oder einen Beitrag ein." });
+  const url = parseMaybeUrl(raw, "instagram.com");
+  if (url && /(^|\.)instagram\.com$/i.test(url.hostname.replace(/^www\./i, ""))) {
+    const parts = url.pathname.split("/").filter(Boolean);
+    const prefix = (parts[0] || "").toLowerCase();
+    if (["p", "reel", "tv"].includes(prefix) && parts[1]) {
+      const canonical = `https://www.instagram.com/${prefix}/${encodeURIComponent(parts[1])}/`;
+      return targetResult("Instagram", raw, "post", canonical, `${prefix === "reel" ? "Reel" : "Beitrag"} ${parts[1]}`, { note: "Instagram-Link erkannt." });
+    }
+    if (parts[0]) {
+      const username = canonicalUsername(parts[0], "instagram");
+      if (username) return targetResult("Instagram", raw, "profile", `https://www.instagram.com/${username}/`, `@${username}`, { username, note: "Instagram-Profil-Link erkannt." });
+    }
+  }
+  const username = canonicalUsername(raw, "instagram");
+  if (username) return targetResult("Instagram", raw, "profile", `https://www.instagram.com/${username}/`, `@${username}`, { username, note: "Instagram-Profil vorbereitet." });
+  return targetResult("Instagram", raw, "unknown", raw, raw, { warning: "Das Ziel konnte nicht eindeutig erkannt werden. Du kannst die Eingabe trotzdem manuell verwenden." });
+}
+
+function normalizeTikTokTarget(rawInput, expectedKind = "profile") {
+  const raw = cleanTargetInput(rawInput);
+  if (!raw) return targetResult("TikTok", raw, "unknown", "", "Noch kein Ziel", { status: "empty", note: "Gib ein TikTok-Profil oder Video ein." });
+  const url = parseMaybeUrl(raw, "tiktok.com");
+  if (url && /(^|\.)tiktok\.com$/i.test(url.hostname.replace(/^www\./i, ""))) {
+    const parts = url.pathname.split("/").filter(Boolean);
+    const handle = parts.find((part) => part.startsWith("@"));
+    const username = canonicalUsername(handle || "", "tiktok");
+    const videoIndex = parts.findIndex((part) => part.toLowerCase() === "video");
+    if (username && videoIndex >= 0 && parts[videoIndex + 1]) {
+      const id = parts[videoIndex + 1].replace(/[^0-9]/g, "") || parts[videoIndex + 1];
+      return targetResult("TikTok", raw, "video", `https://www.tiktok.com/@${username}/video/${encodeURIComponent(id)}`, `@${username} - Video ${id}`, { username, note: "TikTok-Video-Link erkannt." });
+    }
+    if (username) return targetResult("TikTok", raw, "profile", `https://www.tiktok.com/@${username}`, `@${username}`, { username, note: "TikTok-Profil-Link erkannt." });
+  }
+  const username = canonicalUsername(raw, "tiktok");
+  if (username) return targetResult("TikTok", raw, "profile", `https://www.tiktok.com/@${username}`, `@${username}`, { username, note: "TikTok-Profil vorbereitet." });
+  return targetResult("TikTok", raw, "unknown", raw, raw, { warning: "Das Ziel konnte nicht eindeutig erkannt werden. Du kannst die Eingabe trotzdem manuell verwenden." });
+}
+
+function normalizeYouTubeTarget(rawInput, expectedKind = "profile") {
+  const raw = cleanTargetInput(rawInput);
+  if (!raw) return targetResult("YouTube", raw, "unknown", "", "Noch kein Ziel", { status: "empty", note: "Gib einen YouTube-Kanal oder ein Video ein." });
+  const url = parseMaybeUrl(raw, "youtube.com") || parseMaybeUrl(raw, "youtu.be");
+  if (url && /(^|\.)youtu\.be$/i.test(url.hostname.replace(/^www\./i, ""))) {
+    const id = url.pathname.split("/").filter(Boolean)[0] || "";
+    if (id) return targetResult("YouTube", raw, "video", `https://www.youtube.com/watch?v=${encodeURIComponent(id)}`, `Video ${id}`, { note: "YouTube-Kurzlink erkannt." });
+  }
+  if (url && /(^|\.)youtube\.com$/i.test(url.hostname.replace(/^www\./i, ""))) {
+    const parts = url.pathname.split("/").filter(Boolean);
+    const videoId = url.searchParams.get("v");
+    if (videoId) return targetResult("YouTube", raw, "video", `https://www.youtube.com/watch?v=${encodeURIComponent(videoId)}`, `Video ${videoId}`, { note: "YouTube-Video-Link erkannt." });
+    if (["shorts", "live"].includes((parts[0] || "").toLowerCase()) && parts[1]) {
+      return targetResult("YouTube", raw, "video", `https://www.youtube.com/${parts[0].toLowerCase()}/${encodeURIComponent(parts[1])}`, `${parts[0] === "shorts" ? "Shorts" : "Live"} ${parts[1]}`, { note: "YouTube-Video-Link erkannt." });
+    }
+    if ((parts[0] || "").startsWith("@")) {
+      const username = canonicalUsername(parts[0], "youtube");
+      if (username) return targetResult("YouTube", raw, "profile", `https://www.youtube.com/@${username}`, `@${username}`, { username, note: "YouTube-Kanal-Link erkannt." });
+    }
+    if (["channel", "c", "user"].includes((parts[0] || "").toLowerCase()) && parts[1]) {
+      const value = canonicalUsername(parts[1], "youtube");
+      if (value) return targetResult("YouTube", raw, "profile", `https://www.youtube.com/${parts[0].toLowerCase()}/${value}`, `${parts[0]}/${value}`, { username: value, note: "YouTube-Kanal-Link erkannt." });
+    }
+  }
+  const username = canonicalUsername(raw, "youtube");
+  if (username) return targetResult("YouTube", raw, "profile", `https://www.youtube.com/@${username}`, `@${username}`, { username, note: "YouTube-Kanal vorbereitet." });
+  return targetResult("YouTube", raw, "unknown", raw, raw, { warning: "Das Ziel konnte nicht eindeutig erkannt werden. Du kannst die Eingabe trotzdem manuell verwenden." });
+}
+
+function detectTarget(platform, productType, rawInput) {
+  const expectedKind = expectedTargetKind(platform, productType);
+  const normalizedPlatform = String(platform || "").toLowerCase();
+  let result;
+  if (normalizedPlatform === "instagram") result = normalizeInstagramTarget(rawInput, expectedKind);
+  else if (normalizedPlatform === "tiktok") result = normalizeTikTokTarget(rawInput, expectedKind);
+  else if (normalizedPlatform === "youtube") result = normalizeYouTubeTarget(rawInput, expectedKind);
+  else result = targetResult(platform || "Social", rawInput, "unknown", cleanTargetInput(rawInput), cleanTargetInput(rawInput), { note: "Ziel wird manuell übernommen." });
+
+  result.expectedKind = expectedKind;
+  if (!result.warning && result.status !== "empty" && expectedKind === "profile" && !["profile", "unknown"].includes(result.kind)) {
+    result.warning = "Für dieses Paket ist normalerweise ein Profil oder Kanal vorgesehen.";
+  }
+  if (!result.warning && result.status !== "empty" && ["post", "video"].includes(expectedKind) && result.kind === "profile") {
+    result.warning = "Für Likes oder Views brauchst du einen direkten Beitrag- oder Video-Link. Profil-Links sind für dieses Paket nicht möglich.";
+    result.blocked = true;
+  }
+  return result;
+}
+
+function renderTargetPreview(result) {
+  const empty = result.status === "empty";
+  const state = result.warning ? "warning" : (empty ? "empty" : "ready");
+  const label = targetKindLabels[result.kind] || targetKindLabels.unknown;
+  const note = result.warning || result.note || "Ziel vorbereitet.";
+  const url = result.url || "";
+  return `<div class="target-card target-card-${state}">
+    <div class="target-avatar">${empty ? "?" : platformLogo(result.platform || "Social")}</div>
+    <div class="target-copy">
+      <span>${escapeHtml(label)} - ${escapeHtml(result.platform || "Social")}</span>
+      <strong>${escapeHtml(result.label)}</strong>
+      <small>${escapeHtml(note)}</small>
+      ${url ? `<code>${escapeHtml(url)}</code>` : ""}
+    </div>
+    ${url && !result.blocked ? `<button class="target-use" type="button" data-use-target>Dieses Ziel verwenden</button>` : ""}
+  </div>`;
+}
+
+function updateTargetPreview(form) {
+  const product = getProducts()[form.dataset.slug];
+  const input = form.querySelector("[data-target-input]");
+  const preview = form.querySelector("[data-target-preview]");
+  if (!product || !input || !preview) return null;
+  const result = detectTarget(product.platform, product.type, input.value);
+  preview.innerHTML = renderTargetPreview(result);
+  return result;
+}
+
 function validateConfigurator(form, { showEmpty = false } = {}) {
   const product = getProducts()[form.dataset.slug];
   if (!product) return false;
@@ -1877,11 +2111,14 @@ function validateConfigurator(form, { showEmpty = false } = {}) {
   const submit = form.querySelector("button[type='submit']");
   const customInput = form.querySelector("[data-custom-qty]");
   let message = productAvailabilityMessage(form.dataset.slug);
+  const target = updateTargetPreview(form);
 
   if (!message && isCustom && (!qty || qty < 1)) {
     message = showEmpty ? "Bitte gib eine eigene Menge ein." : "";
   } else if (!message && qty > max) {
     message = `Diese Menge ist aktuell zu hoch. Maximal möglich sind ${amountLabel(max)}.`;
+  } else if (!message && target?.blocked) {
+    message = target.warning;
   }
 
   if (customInput) {
